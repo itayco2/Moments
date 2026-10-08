@@ -267,14 +267,38 @@ async function indexFile(e: Embedder, file: File, key: string, url: string, whic
 
 // ---------- wiring ----------
 
+// Each tab starts clean: no query, no playing video from the other library.
+function resetPlayer(): void {
+  clearInterval(typing);
+  current = null;
+  input.value = "";
+  $("timing").textContent = "";
+  $("timing").classList.remove("weak");
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+  $("nowName").textContent = "Nothing playing yet";
+  $("nowAt").textContent = "";
+  $("moment").hidden = $("head").hidden = true;
+}
+
 function setMode(next: Mode): void {
   mode = next;
   $("tabDemo").classList.toggle("on", mode === "demo");
   $("tabOwn").classList.toggle("on", mode === "own");
   $("own").hidden = mode !== "own";
+  resetPlayer();
   showEmpty(mode === "demo" ? "Results show up here." : "Search your videos once they are indexed.");
   renderChips();
   renderStats();
+  const e = embedder;
+  if (e?.device && (mode === "demo" || e.vision)) {
+    setModel(`Search model ready, running ${e.device === "webgpu" ? "on your GPU" : "on your CPU (slower)"}`);
+  } else if (mode === "demo") {
+    setModel("Examples answer instantly. Your own words download the search model once (about 175 MB).");
+  } else {
+    setModel("Your videos are indexed in this browser. The first time downloads the picture model (about 370 MB).");
+  }
   if (mode === "own") updateOwnPanel();
 }
 

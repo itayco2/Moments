@@ -26,8 +26,13 @@ test("one long shot shows up once, not once per frame (PF10)", async ({ page }) 
   expect(nearHurricane).toHaveLength(1);
 });
 
-test("the own-videos tab says plainly that nothing is uploaded", async ({ page }) => {
+test("the own-videos tab starts clean and says plainly that nothing is uploaded", async ({ page }) => {
   await page.goto(URL);
+  await page.getByRole("button", { name: "astronauts on the Moon" }).click();
+  await expect(page.locator("#nowName")).toHaveText("Apollo 11");
   await page.getByRole("button", { name: "Your videos" }).click();
   await expect(page.locator("#drop")).toContainText("Nothing is uploaded");
+  await expect(page.locator("#q")).toHaveValue("");
+  await expect(page.locator("#nowName")).toHaveText("Nothing playing yet");
+  await expect(page.locator("#model")).toContainText("picture model");
 });
