@@ -43,8 +43,8 @@ def main() -> int:
     model = load_model()
     for tokens in args.tokens:
         model[0].processor.image_processor.max_soft_tokens = tokens
-        vecs = model.encode([{"image": im} for im in images], convert_to_numpy=True, normalize_embeddings=True,
-                            batch_size=8)
+        vecs = model.encode([{"image": im} for im in images], convert_to_numpy=True,
+                            normalize_embeddings=True, batch_size=8)
         np.save(args.out / f"python-t{tokens}.npy", vecs.astype(np.float32))
     (args.out / "names.json").write_text(json.dumps(names), encoding="utf-8")
     print(f"{len(names)} frames -> {args.out}")
