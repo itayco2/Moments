@@ -36,6 +36,24 @@ By kind, 70 tokens per frame:
 With 53 queries one query is 1.9 points, so the two budgets are within noise of each other. Half the
 vision tokens per frame cost nothing measurable on this footage and indexed 1.5x faster.
 
+### Does watching 8 seconds beat looking at one frame?
+
+The expectation was yes, especially for actions. Same footage, same queries, one frame every 4 s
+embedded as an image-sized video of 1 frame (`--window 1 --stride 4`), scored by the same rule (a result's
+centre within 6 s of a labelled range, which for 8 s windows is identical to the overlap rule above):
+
+| index | hit@1 | hit@5 | action hit@1 | index time for 3 h |
+|---|---|---|---|---|
+| 8 s windows, 70 tokens | 0.74 (39/53) | 0.93 | 0.61 | 16.5 min |
+| 1 frame every 4 s, 140 tokens | 0.77 (41/53) | 0.93 | 0.67 | 12.4 min |
+
+Query by query it is a draw: the windows rank the answer higher on 7 queries, single frames on 8.
+Frames win "a space shuttle lifting off from the launch pad" (first against third): one frame of a
+shuttle trailing fire is unambiguous, while an 8 s window that spans liftoff blends the pad with the sky.
+Windows win "an astronaut climbing down the lander's ladder" and "the President greeting the astronauts
+through a quarantine trailer window", which unfold over seconds. On these 53 queries the motion did not
+pay for itself; a query set built around actions might say otherwise.
+
 ### Shorter vectors (Matryoshka)
 
 The model is trained so the first N numbers of a vector still work on their own. Same index, cut and renormalized:

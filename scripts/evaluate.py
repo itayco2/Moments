@@ -21,13 +21,17 @@ from moments.model import load_model  # noqa: E402
 from moments.search import Index  # noqa: E402
 
 QUERIES = Path(__file__).resolve().parents[1] / "eval" / "queries.json"
-TOLERANCE_S = 2.0
+# A hit is correct when its centre lies within a labelled range widened by this much. For an 8 s window
+# that is exactly "the window overlaps the range with 2 s to spare"; stated by centre it also scores
+# a 1-frame index by the same standard instead of a stricter one.
+CENTRE_TOLERANCE_S = 6.0
 DEPTH = 10
 
 
 def is_relevant(hit, labels: list[dict]) -> bool:
-    return any(hit.video == lab["video"] and hit.start < lab["end"] + TOLERANCE_S
-               and lab["start"] - TOLERANCE_S < hit.end for lab in labels)
+    centre = (hit.start + hit.end) / 2
+    return any(hit.video == lab["video"] and lab["start"] - CENTRE_TOLERANCE_S < centre
+               < lab["end"] + CENTRE_TOLERANCE_S for lab in labels)
 
 
 def truncated(index: Index, dims: int) -> Index:

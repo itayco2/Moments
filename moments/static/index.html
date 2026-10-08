@@ -74,20 +74,23 @@
   /* Portrait (the 4:5 feed video): player on top at full width, results as a 3 x 2 grid below. */
   @media (max-aspect-ratio: 1/1) and (min-width: 700px) {
     body { padding: 44px 48px; }
-    h1 { font-size: 44px; }
-    .tag, .stats { font-size: 15px; }
-    header { flex-direction: column; gap: 8px; margin-bottom: 28px; }
-    .search { padding: 18px 26px; margin-bottom: 20px; }
-    .search input { font-size: 30px; }
+    h1 { font-size: 58px; }
+    .tag, .stats { font-size: 19px; }
+    header { flex-direction: column; gap: 10px; margin-bottom: 30px; }
+    .search { padding: 20px 28px; margin-bottom: 30px; border-radius: 30px; }
+    .search input { font-size: 42px; }
+    .timing { font-size: 20px; }
     .chips { display: none; }
     main { grid-template-columns: 1fr; gap: 30px; }
-    .now-title b { font-size: 26px; }
-    .now-title span { font-size: 17px; }
+    .now-title b { font-size: 32px; }
+    .now-title span { font-size: 22px; }
+    .timeline { height: 16px; margin-top: 14px; }
     .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     .hit:nth-child(n + 4) { display: none; }
     .hit { grid-template-columns: 1fr; padding: 8px 8px 12px; }
     .hit img { width: 100%; }
-    .hit .name { font-size: 16px; }
+    .hit .name { font-size: 18px; }
+    .hit .at { font-size: 15px; }
   }
 
   @media (max-width: 900px) {
@@ -126,7 +129,7 @@
 <script>
 const EXAMPLES = [
   "a rocket lifting off",
-  "an astronaut walking on the Moon",
+  "astronauts on the Moon",
   "a hurricane seen from space",
   "a parachute opening over Mars",
   "a capsule floating in the ocean",

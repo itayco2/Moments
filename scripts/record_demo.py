@@ -22,7 +22,7 @@ from playwright.sync_api import sync_playwright
 
 DEFAULT_QUERIES = [
     "a rocket lifting off",
-    "an astronaut walking on the Moon",
+    "astronauts on the Moon",
     "a hurricane seen from space",
     "a parachute opening over Mars",
 ]
@@ -53,7 +53,7 @@ def record(url: str, queries: list[str], width: int, height: int,
         cdp.on("Page.screencastFrame", on_frame)
         cdp.send("Page.startScreencast", {"format": "jpeg", "quality": 92, "maxWidth": width,
                                           "maxHeight": height, "everyNthFrame": 1})
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(700)
         for query in queries:
             box = page.locator("#q")
             box.fill("")
