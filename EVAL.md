@@ -105,9 +105,11 @@ Search always returns something. On the shipped demo setup, the four negatives' 
 | a dog running on a beach | 0.683 |
 | a chef cooking in a restaurant kitchen | 0.639 |
 
-Correct first results score 0.742 to 0.862 (median 0.788). On this set a cutoff near 0.74 separates the two, but
-four negatives are too few to trust a hard "not found". The page therefore labels a first result under 0.74 as a
-weak match instead of hiding it.
+Correct first results score 0.742 to 0.862 (median 0.788). Four negatives are too few to trust a hard "not
+found", and a cutoff fitted exactly between 0.741 and 0.742 would only describe these 57 numbers. The page uses a
+round 0.74: a first result below it is labelled a weak match, and the results still show. On this set that flags
+3 of the 4 negatives ("city lights seen from orbit at night", 0.741, slips through) and none of the 39 correct
+first results.
 
 ## What it gets wrong
 

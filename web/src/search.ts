@@ -19,6 +19,15 @@ export const MERGE_GAP_S = 4;
 export const RUN_MARGIN_FRACTION = 0.4;
 export const HIDE_S = 16;
 
+// On the demo, every correct first result scored 0.742 or more and the four searches for absent things scored
+// 0.640 to 0.741 (EVAL.md). A round 0.74, not a line fitted to those 57 numbers: it flags 3 of the 4 negatives
+// and none of the 39 correct first results. Below it the page says "weak match" and still shows the results.
+export const WEAK_MATCH = 0.74;
+
+export function isWeakMatch(hits: Hit[]): boolean {
+  return hits.length > 0 && hits[0].score < WEAK_MATCH;
+}
+
 export function median(values: Float32Array): number {
   const sorted = Float32Array.from(values).sort();
   const mid = sorted.length >> 1;

@@ -17,7 +17,7 @@ import {
   withSource,
   withVideo,
 } from "./library";
-import { type Hit, type Row, search } from "./search";
+import { type Hit, isWeakMatch, type Row, search } from "./search";
 import { clearVideos, loadVideos, saveVideo } from "./store";
 import { $, el, message, renderHits, setBar } from "./ui";
 
@@ -76,7 +76,10 @@ async function runSearch(query: string, preset?: Float32Array): Promise<void> {
     const t0 = performance.now();
     const vector = preset ?? (await e!.embedText(query));
     const hits = search(lib.rows, lib.vectors, lib.dim, vector, K);
-    $("timing").textContent = `${Math.max(1, Math.round(performance.now() - t0))} ms`;
+    const ms = `${Math.max(1, Math.round(performance.now() - t0))} ms`;
+    const weak = isWeakMatch(hits);
+    $("timing").textContent = weak ? `weak match · ${ms}` : ms;
+    $("timing").classList.toggle("weak", weak);
     const rows = renderHits($("results"), hits, lib.videos, (hit, row) => play(hit, lib.videos[hit.video], rows, row));
     if (hits.length) play(hits[0], lib.videos[hits[0].video], rows, rows[0]);
   } catch (err) {

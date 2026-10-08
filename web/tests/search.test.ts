@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { clock, fp16ToFloat32 } from "../src/format";
-import { dotAll, median, normalize, search, type Row } from "../src/search";
+import { dotAll, isWeakMatch, median, normalize, search, type Row } from "../src/search";
 
 // Two-dimensional unit vectors whose dot product with [1, 0] is exactly the given score.
 function vectorsFor(scores: number[]): Float32Array {
@@ -40,6 +40,13 @@ describe("search", () => {
     const scores = [0.9, 0.88, 0.885, 0.875, 0.88, 0.895, 0.5, ...Array(20).fill(0.3)];
     const hits = search([...shot, ...background], vectorsFor(scores), 2, Q, 3);
     expect(hits.slice(0, 2).map((h) => h.start)).toEqual([1948, 2400]);
+  });
+
+  it("calls a first result under 0.74 a weak match", () => {
+    const hit = (score: number) => ({ ...row("a", 0), score });
+    expect(isWeakMatch([hit(0.741)])).toBe(false);
+    expect(isWeakMatch([hit(0.739), hit(0.9)])).toBe(true);
+    expect(isWeakMatch([])).toBe(false);
   });
 
   it("takes the median like numpy", () => {
