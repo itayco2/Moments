@@ -11,9 +11,10 @@ export interface Hit extends Row {
   score: number;
 }
 
-// Moments within this many seconds of a kept result belong to it, and the kept span grows as they are
-// absorbed, so one long shot becomes one result instead of filling the list (PREFLIGHT PF06).
+// A moment is a run of consecutive matching windows: neighbours closer than this gap join one run, so a
+// long shot shows up once (PREFLIGHT PF06, PF10). Same values as moments/search.py.
 export const MERGE_GAP_S = 4;
+export const CANDIDATE_POOL = 400;
 
 export function dotAll(vectors: Float32Array, dim: number, query: Float32Array): Float32Array {
   if (query.length !== dim) throw new Error(`query has ${query.length} dims, the library has ${dim}`);
@@ -33,24 +34,30 @@ export function search(rows: Row[], vectors: Float32Array, dim: number, query: F
     throw new Error(`${rows.length} rows but ${vectors.length / dim} vectors`);
   }
   const scores = dotAll(vectors, dim, query);
-  const order = Array.from(scores.keys()).sort((a, b) => scores[b] - scores[a]);
-  const hits: Hit[] = [];
-  const spans: { video: string; lo: number; hi: number }[] = [];
-  for (const i of order) {
-    const row = rows[i];
-    const near = spans.find(
-      (s) => s.video === row.video && row.start < s.hi + MERGE_GAP_S && s.lo < row.end + MERGE_GAP_S,
-    );
-    if (near) {
-      near.lo = Math.min(near.lo, row.start);
-      near.hi = Math.max(near.hi, row.end);
-      continue;
+  const pool = Array.from(scores.keys())
+    .sort((a, b) => scores[b] - scores[a])
+    .slice(0, Math.max(CANDIDATE_POOL, k));
+  // Walk the candidates in time order and cut a new run wherever the gap to the previous one is too big.
+  const byTime = [...pool].sort((a, b) =>
+    rows[a].video === rows[b].video ? rows[a].start - rows[b].start : rows[a].video < rows[b].video ? -1 : 1,
+  );
+  const runs: number[][] = [];
+  let runEnd = 0;
+  for (const i of byTime) {
+    const last = runs.at(-1);
+    if (last && rows[last.at(-1)!].video === rows[i].video && rows[i].start - runEnd <= MERGE_GAP_S) {
+      last.push(i);
+      runEnd = Math.max(runEnd, rows[i].end);
+    } else {
+      runs.push([i]);
+      runEnd = rows[i].end;
     }
-    hits.push({ ...row, score: scores[i] });
-    spans.push({ video: row.video, lo: row.start, hi: row.end });
-    if (hits.length === k) break;
   }
-  return hits;
+  return runs
+    .map((run) => run.reduce((best, j) => (scores[j] > scores[best] ? j : best)))
+    .sort((a, b) => scores[b] - scores[a])
+    .slice(0, k)
+    .map((i) => ({ ...rows[i], score: scores[i] }));
 }
 
 export function normalize(v: Float32Array): Float32Array {

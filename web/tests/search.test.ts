@@ -33,6 +33,12 @@ describe("search", () => {
     expect(hits.map((h) => h.start)).toEqual([0, 100]);
   });
 
+  it("merges a run of frames even when its middle ranks after both ends (PF10)", () => {
+    const rows = [1948, 1952, 1956, 1960, 1964, 1968, 2400].map((s) => row("a.mp4", s, 1));
+    const hits = search(rows, vectorsFor([0.9, 0.7, 0.71, 0.72, 0.73, 0.89, 0.5]), 2, Q, 3);
+    expect(hits.map((h) => h.start)).toEqual([1948, 2400]);
+  });
+
   it("refuses rows and vectors that disagree", () => {
     expect(() => search([row("a", 0)], new Float32Array(4), 2, Q, 1)).toThrow(/rows but/);
   });

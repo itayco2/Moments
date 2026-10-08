@@ -28,7 +28,7 @@ EXAMPLES = [
     "a rocket lifting off",
     "astronauts on the Moon",
     "a hurricane seen from space",
-    "a parachute opening over Mars",
+    "a red and white parachute",
     "a capsule floating in the ocean",
     "a crowd watching a launch",
 ]
@@ -75,12 +75,15 @@ def main() -> int:
     }
     (args.out / "library.json").write_text(json.dumps(library, separators=(",", ":")), encoding="utf-8")
 
-    # Golden results over exactly what the browser sees: fp16 vectors and fp16 example queries.
+    # Golden results over exactly what the browser sees: fp16 vectors, fp16 example queries, and times
+    # rounded as in library.json (an unrounded 2740.0039 against the page's 2740.0 failed 4 of 6 checks).
     index.vectors = half.astype(np.float32)
+    for r in index.rows:
+        r["start"], r["end"] = round(r["start"], 2), round(r["end"], 2)
     golden = []
     for q, v in zip(EXAMPLES, qvecs, strict=True):
         hits = index.search(v.astype("<f2").astype(np.float32), GOLDEN_K)
-        golden.append({"query": q, "hits": [[h.video, h.start] for h in hits]})
+        golden.append({"query": q, "hits": [[h.video, round(h.start, 2)] for h in hits]})
     args.golden.write_text(json.dumps(golden, indent=1), encoding="utf-8")
 
     size = sum(p.stat().st_size for p in args.out.rglob("*") if p.is_file())

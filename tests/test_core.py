@@ -91,6 +91,16 @@ def test_search_merges_adjacent_windows_of_one_shot(tmp_path):
     assert [h.start for h in hits] == [0, 60]
 
 
+def test_search_merges_a_run_of_single_frames_visited_out_of_order(tmp_path):
+    # Frames every 4 s; the middle ones score lower, so they come up after both ends (PF10).
+    starts = (1948, 1952, 1956, 1960, 1964, 1968, 2400)
+    rows = [{"video": "a.mp4", "start": s, "end": s + 1, "thumb": ""} for s in starts]
+    scores = np.array([0.90, 0.70, 0.71, 0.72, 0.73, 0.89, 0.50])
+    vectors = np.stack([scores, np.sqrt(1 - scores**2)], axis=1)
+    hits = make_index(tmp_path / "run", rows, vectors).search(np.array([1.0, 0.0], dtype=np.float32), k=3)
+    assert [h.start for h in hits] == [1948, 2400]
+
+
 def test_index_rejects_mismatched_files(tmp_path):
     with pytest.raises(ValueError, match="rows but"):
         make_index(tmp_path / "bad", [{"video": "a", "start": 0, "end": 1, "thumb": ""}], np.zeros((2, 2)))
