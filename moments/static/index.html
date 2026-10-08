@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Rubik:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #f3efe6; --ink: #141413; --body: #2b2925; --grey: #7a766c;
+    --card: #fbf6e4; --accent: #8b7cf6; --track: #e4ddcc;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--ground); color: var(--body);
+    font: 16px/1.45 "IBM Plex Sans", system-ui, sans-serif;
+    min-height: 100vh; padding: 28px 40px 36px;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  h1 { font: 800 34px/1 Rubik, sans-serif; color: var(--ink); letter-spacing: -0.5px; }
+  .tag, .stats { font-size: 13px; color: var(--grey); }
+
+  .search {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 4px solid var(--ink); border-radius: 26px;
+    box-shadow: 8px 8px 0 var(--accent); padding: 14px 22px; margin-bottom: 18px;
+  }
+  .search input {
+    flex: 1; border: 0; background: transparent; outline: none;
+    font: 500 24px/1.2 "IBM Plex Sans", sans-serif; color: var(--ink);
+  }
+  .search input::placeholder { color: #a8a294; }
+  .timing { font-size: 13px; color: var(--grey); white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .chip {
+    font: 500 14px "IBM Plex Sans", sans-serif; color: var(--ink); cursor: pointer;
+    background: transparent; border: 2px solid var(--ink); border-radius: 999px; padding: 6px 14px;
+  }
+  .chip:hover { background: var(--card); }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; align-items: start; }
+  .player {
+    background: var(--card); border: 4px solid var(--ink); border-radius: 24px;
+    box-shadow: 8px 8px 0 var(--ink); overflow: hidden;
+  }
+  video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #0c0c0b; }
+  .now { padding: 16px 20px 18px; }
+  .now-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .now-title b { font: 700 20px Rubik, sans-serif; color: var(--ink); }
+  .now-title span { font-size: 14px; color: var(--grey); }
+  .timeline { position: relative; height: 12px; margin-top: 12px; background: var(--track); border-radius: 6px; }
+  .timeline .moment { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 6px; min-width: 6px; }
+  .timeline .head { position: absolute; top: -4px; width: 4px; height: 20px; background: var(--ink); border-radius: 2px; }
+
+  .results { display: flex; flex-direction: column; gap: 12px; }
+  .hit {
+    display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: center; cursor: pointer;
+    background: var(--card); border: 3px solid var(--ink); border-radius: 16px; padding: 8px;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .hit:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
+  .hit.active { box-shadow: 6px 6px 0 var(--accent); }
+  .hit img { width: 132px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 9px; display: block; }
+  .hit .name { font-weight: 600; color: var(--ink); font-size: 15px; line-height: 1.25; }
+  .hit .at { font-size: 13px; color: var(--grey); margin-top: 2px; }
+  .bar { height: 5px; background: var(--track); border-radius: 3px; margin-top: 7px; }
+  .bar i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+  .empty { color: var(--grey); padding: 8px 2px; }
+
+  /* Portrait (the 4:5 feed video): player on top at full width, results as a 3 x 2 grid below. */
+  @media (max-aspect-ratio: 1/1) and (min-width: 700px) {
+    body { padding: 44px 48px; }
+    h1 { font-size: 44px; }
+    .tag, .stats { font-size: 15px; }
+    header { flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .search { padding: 18px 26px; margin-bottom: 20px; }
+    .search input { font-size: 30px; }
+    .chips { display: none; }
+    main { grid-template-columns: 1fr; gap: 30px; }
+    .now-title b { font-size: 26px; }
+    .now-title span { font-size: 17px; }
+    .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .hit:nth-child(n + 4) { display: none; }
+    .hit { grid-template-columns: 1fr; padding: 8px 8px 12px; }
+    .hit img { width: 100%; }
+    .hit .name { font-size: 16px; }
+  }
+
+  @media (max-width: 900px) {
+    body { padding: 20px 16px; }
+    header { flex-direction: column; gap: 6px; }
+    .brand { flex-direction: column; gap: 4px; }
+    main { grid-template-columns: 1fr; }
+    .search input { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Moments</h1><span class="tag mono">type what you want to see</span></div>
+  <div class="stats mono" id="stats"></div>
+</header>
+
+<form class="search" id="form" autocomplete="off">
+  <input id="q" placeholder="Describe the moment you are looking for" maxlength="200" aria-label="Search">
+  <span class="timing mono" id="timing"></span>
+</form>
+
+<div class="chips" id="chips"></div>
+
+<main>
+  <section class="player">
+    <video id="video" muted playsinline preload="auto"></video>
+    <div class="now">
+      <div class="now-title"><b id="nowName">Nothing playing yet</b><span class="mono" id="nowAt"></span></div>
+      <div class="timeline" id="timeline"><div class="moment" id="moment" hidden></div><div class="head" id="head" hidden></div></div>
+    </div>
+  </section>
+  <section class="results" id="results"><p class="empty">Results show up here.</p></section>
+</main>
+
+<script>
+const EXAMPLES = [
+  "a rocket lifting off",
+  "an astronaut walking on the Moon",
+  "a hurricane seen from space",
+  "a parachute opening over Mars",
+  "a capsule floating in the ocean",
+  "a crowd watching a launch",
+];
+const LOOP_TAIL_S = 2;
+const $ = (id) => document.getElementById(id);
+const video = $("video");
+let current = null;
+let typing = null;
+
+const clock = (s) => {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const mm = String(m).padStart(h ? 2 : 1, "0"), ss = String(sec).padStart(2, "0");
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+};
+
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+async function loadAbout() {
+  try {
+    const about = await (await fetch("/api/about")).json();
+    $("stats").textContent =
+      `${clock(about.seconds)} of NASA footage · ${about.videos} videos · ${about.moments.toLocaleString()} moments`;
+  } catch { $("stats").textContent = ""; }
+}
+
+function play(hit, row) {
+  current = hit;
+  document.querySelectorAll(".hit").forEach((h) => h.classList.toggle("active", h === row));
+  $("nowName").textContent = hit.display;
+  $("nowAt").textContent = `${clock(hit.start)} of ${clock(hit.duration)}`;
+  const span = hit.duration || hit.end;
+  const moment = $("moment");
+  moment.hidden = false; $("head").hidden = false;
+  moment.style.left = `${(hit.start / span) * 100}%`;
+  moment.style.width = `${((hit.end - hit.start) / span) * 100}%`;
+  const src = `/video/${encodeURIComponent(hit.video)}`;
+  const seek = () => { video.currentTime = hit.start; video.play().catch(() => {}); };
+  if (video.getAttribute("src") !== src) {
+    video.setAttribute("src", src);
+    video.addEventListener("loadedmetadata", seek, { once: true });
+  } else {
+    seek();
+  }
+}
+
+video.addEventListener("timeupdate", () => {
+  if (!current) return;
+  const span = current.duration || video.duration || 1;
+  $("head").style.left = `calc(${(video.currentTime / span) * 100}% - 2px)`;
+  if (video.currentTime > current.end + LOOP_TAIL_S) video.currentTime = current.start;
+});
+
+function render(result) {
+  const box = $("results");
+  box.replaceChildren();
+  if (!result.hits.length) { box.append(el("p", "empty", "Nothing found.")); return; }
+  const best = result.hits[0].score, worst = result.hits[result.hits.length - 1].score;
+  result.hits.forEach((hit, i) => {
+    const row = el("div", "hit");
+    const img = el("img"); img.src = hit.thumb; img.alt = "";
+    const info = el("div");
+    info.append(el("div", "name", hit.display), el("div", "at mono", `${clock(hit.start)} to ${clock(hit.end)}`));
+    const bar = el("div", "bar"), fill = el("i");
+    fill.style.width = `${40 + 60 * ((hit.score - worst) / Math.max(best - worst, 1e-6))}%`;
+    bar.append(fill); info.append(bar);
+    row.append(img, info);
+    row.addEventListener("click", () => play(hit, row));
+    box.append(row);
+    if (i === 0) play(hit, row);
+  });
+}
+
+async function search(query) {
+  query = query.trim();
+  if (!query) return;
+  $("timing").textContent = "searching";
+  try {
+    const res = await fetch(`/api/search?k=6&q=${encodeURIComponent(query)}`);
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || res.statusText);
+    $("timing").textContent = `${body.ms} ms`;
+    render(body);
+  } catch (err) {
+    $("timing").textContent = "";
+    $("results").replaceChildren(el("p", "empty", `Search failed: ${err.message}`));
+  }
+}
+
+function typeThenSearch(text) {
+  clearInterval(typing);
+  const input = $("q");
+  input.value = ""; input.focus();
+  let i = 0;
+  typing = setInterval(() => {
+    input.value = text.slice(0, ++i);
+    if (i >= text.length) { clearInterval(typing); search(text); }
+  }, 45);
+}
+
+EXAMPLES.forEach((text) => {
+  const chip = el("button", "chip", text);
+  chip.type = "button";
+  chip.addEventListener("click", () => typeThenSearch(text));
+  $("chips").append(chip);
+});
+$("form").addEventListener("submit", (e) => { e.preventDefault(); search($("q").value); });
+loadAbout();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+[project]
+name = "moments"
+version = "0.1.0"
+description = "Search hours of video by typing what you want to see, with one open multimodal embedding model on a home GPU."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Itay Cohen" }]
+dependencies = [
+    "torch==2.14.0",
+    "torchvision",
+    "sentence-transformers>=5",
+    "transformers>=5",
+    "accelerate>=1",
+    "av>=14",
+    "numpy>=2",
+    "pillow>=11",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.8",
+    "playwright==1.63.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+package = false
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
