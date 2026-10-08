@@ -12,11 +12,15 @@ import numpy as np
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
-# A moment is a run of consecutive matching windows: neighbours closer than this gap join one run, so a long
-# shot shows up once (PF06, PF10). It suits both 8 s windows every 4 s and single frames every 4 s.
+# A moment grows from its best window through time-adjacent neighbours (gap <= MERGE_GAP_S) whose score
+# stays within RUN_MARGIN_FRACTION of the way from the peak down to the median score; the moment and HIDE_S
+# around it are then hidden from later results. A long shot shows up once, and one continuous video still
+# yields several moments (PF06, PF10, PF11). The margin is relative: a shot's scores drift more for some
+# queries. Chosen by scripts/sweep_merge.py on the demo index: first-place accuracy was the same for every
+# setting tried; 0.4 with 16 s gave the best top-5 (0.94) and the fewest repeats (9 of 36 example results).
 MERGE_GAP_S = 4.0
-# Runs are built from the best-scoring windows only; a shot's frames rank close together, so 400 is plenty.
-CANDIDATE_POOL = 400
+RUN_MARGIN_FRACTION = 0.4
+HIDE_S = 16.0
 
 
 @dataclass(frozen=True)
@@ -37,25 +41,49 @@ class Index:
         self.vectors = np.load(folder / "vectors.npy")
         if len(self.rows) != len(self.vectors):
             raise ValueError(f"{folder}: {len(self.rows)} rows but {len(self.vectors)} vectors")
+        self.prev, self.next = neighbours(self.rows)
 
     def embed_query(self, model: SentenceTransformer, query: str) -> np.ndarray:
         return model.encode_query(query, convert_to_numpy=True, normalize_embeddings=True).astype(np.float32)
 
     def search(self, query_vec: np.ndarray, k: int = 5) -> list[Hit]:
+        rows, prev, nxt = self.rows, self.prev, self.next
         scores = self.vectors @ query_vec
-        pool = np.argsort(-scores)[: max(CANDIDATE_POOL, k)]
-        # Walk the candidates in time order and cut a new run wherever the gap to the previous one is too big.
-        runs: list[list[int]] = []
-        run_end = 0.0
-        for i in sorted(pool.tolist(), key=lambda j: (self.rows[j]["video"], self.rows[j]["start"])):
-            row = self.rows[i]
-            same_video = bool(runs) and self.rows[runs[-1][-1]]["video"] == row["video"]
-            if same_video and row["start"] - run_end <= MERGE_GAP_S:
-                runs[-1].append(i)
-                run_end = max(run_end, row["end"])
-            else:
-                runs.append([i])
-                run_end = row["end"]
-        best = sorted((max(run, key=lambda j: scores[j]) for run in runs), key=lambda j: -scores[j])
-        return [Hit(self.rows[i]["video"], self.rows[i]["start"], self.rows[i]["end"], float(scores[i]),
-                    self.rows[i]["thumb"]) for i in best[:k]]
+        median = float(np.median(scores))
+        hidden = np.zeros(len(rows), dtype=bool)
+        hits: list[Hit] = []
+        for i in np.argsort(-scores).tolist():
+            if hidden[i]:
+                continue
+            row = rows[i]
+            hits.append(Hit(row["video"], row["start"], row["end"], float(scores[i]), row["thumb"]))
+            if len(hits) == k:
+                break
+            floor = scores[i] - RUN_MARGIN_FRACTION * (scores[i] - median)
+            lo = hi = i
+            while prev[lo] >= 0 and adjacent(rows, prev[lo], lo) and scores[prev[lo]] >= floor:
+                lo = prev[lo]
+            while nxt[hi] >= 0 and adjacent(rows, hi, nxt[hi]) and scores[nxt[hi]] >= floor:
+                hi = nxt[hi]
+            start, end = rows[lo]["start"], rows[hi]["end"]
+            j = lo
+            while j >= 0 and rows[j]["end"] > start - HIDE_S:
+                hidden[j], j = True, prev[j]
+            j = lo
+            while j >= 0 and rows[j]["start"] < end + HIDE_S:
+                hidden[j], j = True, nxt[j]
+        return hits
+
+
+def neighbours(rows: list[dict]) -> tuple[list[int], list[int]]:
+    """Previous and next row of the same video in time order (-1 at the ends)."""
+    order = sorted(range(len(rows)), key=lambda j: (rows[j]["video"], rows[j]["start"]))
+    prev, nxt = [-1] * len(rows), [-1] * len(rows)
+    for a, b in zip(order, order[1:], strict=False):
+        if rows[a]["video"] == rows[b]["video"]:
+            nxt[a], prev[b] = b, a
+    return prev, nxt
+
+
+def adjacent(rows: list[dict], a: int, b: int) -> bool:
+    return rows[b]["start"] - rows[a]["end"] <= MERGE_GAP_S

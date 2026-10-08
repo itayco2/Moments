@@ -74,31 +74,43 @@ def make_index(folder: Path, rows: list[dict], vectors: np.ndarray) -> Index:
     return Index(folder)
 
 
+def top_starts(folder: Path, rows: list[dict], scores: list[float], k: int) -> list[float]:
+    s = np.array(scores)
+    index = make_index(folder, rows, np.stack([s, np.sqrt(1 - s**2)], axis=1))
+    return [h.start for h in index.search(np.array([1.0, 0.0], dtype=np.float32), k=k)]
+
+
+def frames(starts, video="a.mp4", length=1):
+    return [{"video": video, "start": s, "end": s + length, "thumb": ""} for s in starts]
+
+
 def test_search_keeps_one_hit_per_moment(tmp_path):
-    rows = [{"video": "a.mp4", "start": s, "end": s + 8, "thumb": ""} for s in (0, 4, 8, 40)]
-    rows.append({"video": "b.mp4", "start": 0, "end": 8, "thumb": ""})
-    scores = np.array([0.9, 0.95, 0.8, 0.5, 0.7])
-    vectors = np.stack([scores, np.sqrt(1 - scores**2)], axis=1)
-    hits = make_index(tmp_path / "idx", rows, vectors).search(np.array([1.0, 0.0], dtype=np.float32), k=3)
+    rows = frames((0, 4, 8, 40), length=8) + frames((0,), video="b.mp4", length=8)
+    s = np.array([0.9, 0.95, 0.8, 0.5, 0.7])
+    hits = make_index(tmp_path / "idx", rows, np.stack([s, np.sqrt(1 - s**2)], axis=1)).search(
+        np.array([1.0, 0.0], dtype=np.float32), k=3)
     assert [(h.video, h.start) for h in hits] == [("a.mp4", 4), ("b.mp4", 0), ("a.mp4", 40)]
 
 
 def test_search_merges_adjacent_windows_of_one_shot(tmp_path):
-    rows = [{"video": "a.mp4", "start": s, "end": s + 8, "thumb": ""} for s in (0, 8, 16, 60)]
-    scores = np.array([0.9, 0.85, 0.8, 0.5])
-    vectors = np.stack([scores, np.sqrt(1 - scores**2)], axis=1)
-    hits = make_index(tmp_path / "adj", rows, vectors).search(np.array([1.0, 0.0], dtype=np.float32), k=3)
-    assert [h.start for h in hits] == [0, 60]
+    rows = frames((0, 8, 16, 60), length=8)
+    assert top_starts(tmp_path / "adj", rows, [0.9, 0.89, 0.88, 0.5], 3) == [0, 60]
 
 
-def test_search_merges_a_run_of_single_frames_visited_out_of_order(tmp_path):
-    # Frames every 4 s; the middle ones score lower, so they come up after both ends (PF10).
+def test_search_merges_a_shot_of_frames_visited_out_of_order(tmp_path):
+    # The far end of the shot ranks second, before the middle: it must still join the first result (PF10).
+    # Like a real library, most frames are unrelated background (the margin is relative to the median).
     starts = (1948, 1952, 1956, 1960, 1964, 1968, 2400)
-    rows = [{"video": "a.mp4", "start": s, "end": s + 1, "thumb": ""} for s in starts]
-    scores = np.array([0.90, 0.70, 0.71, 0.72, 0.73, 0.89, 0.50])
-    vectors = np.stack([scores, np.sqrt(1 - scores**2)], axis=1)
-    hits = make_index(tmp_path / "run", rows, vectors).search(np.array([1.0, 0.0], dtype=np.float32), k=3)
-    assert [h.start for h in hits] == [1948, 2400]
+    rows = frames(starts) + frames(range(0, 80, 4), video="b.mp4")
+    scores = [0.90, 0.88, 0.885, 0.875, 0.88, 0.895, 0.5] + [0.3] * 20
+    assert top_starts(tmp_path / "run", rows, scores, 3)[:2] == [1948, 2400]
+
+
+def test_search_finds_several_moments_in_one_continuous_video(tmp_path):
+    # Frames every 4 s with no gaps: a match, a dip, another match. Not one moment for the video (PF11).
+    starts = list(range(0, 48, 4))
+    scores = [0.90, 0.89, 0.70, 0.60, 0.61, 0.62, 0.60, 0.70, 0.86, 0.87, 0.60, 0.59]
+    assert top_starts(tmp_path / "one", frames(starts), scores, 2) == [0, 36]
 
 
 def test_index_rejects_mismatched_files(tmp_path):

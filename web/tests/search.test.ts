@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { clock, fp16ToFloat32 } from "../src/format";
-import { dotAll, normalize, search, type Row } from "../src/search";
+import { dotAll, median, normalize, search, type Row } from "../src/search";
 
 // Two-dimensional unit vectors whose dot product with [1, 0] is exactly the given score.
 function vectorsFor(scores: number[]): Float32Array {
@@ -23,20 +23,35 @@ describe("search", () => {
 
   it("merges adjacent windows of one shot (PF06)", () => {
     const rows = [0, 8, 16, 60].map((s) => row("a.mp4", s));
-    const hits = search(rows, vectorsFor([0.9, 0.85, 0.8, 0.5]), 2, Q, 3);
+    const hits = search(rows, vectorsFor([0.9, 0.89, 0.88, 0.5]), 2, Q, 3);
     expect(hits.map((h) => h.start)).toEqual([0, 60]);
   });
 
   it("merges single frames 4 s apart into one moment", () => {
     const rows = [0, 4, 8, 12, 100].map((s) => row("a.mp4", s, 1));
-    const hits = search(rows, vectorsFor([0.9, 0.88, 0.86, 0.84, 0.3]), 2, Q, 5);
+    const hits = search(rows, vectorsFor([0.9, 0.89, 0.88, 0.87, 0.3]), 2, Q, 5);
     expect(hits.map((h) => h.start)).toEqual([0, 100]);
   });
 
-  it("merges a run of frames even when its middle ranks after both ends (PF10)", () => {
-    const rows = [1948, 1952, 1956, 1960, 1964, 1968, 2400].map((s) => row("a.mp4", s, 1));
-    const hits = search(rows, vectorsFor([0.9, 0.7, 0.71, 0.72, 0.73, 0.89, 0.5]), 2, Q, 3);
-    expect(hits.map((h) => h.start)).toEqual([1948, 2400]);
+  it("merges a shot even when its far end ranks before its middle (PF10)", () => {
+    // Like a real library, most frames are unrelated background (the margin is relative to the median).
+    const shot = [1948, 1952, 1956, 1960, 1964, 1968, 2400].map((s) => row("a.mp4", s, 1));
+    const background = Array.from({ length: 20 }, (_, i) => row("b.mp4", i * 4, 1));
+    const scores = [0.9, 0.88, 0.885, 0.875, 0.88, 0.895, 0.5, ...Array(20).fill(0.3)];
+    const hits = search([...shot, ...background], vectorsFor(scores), 2, Q, 3);
+    expect(hits.slice(0, 2).map((h) => h.start)).toEqual([1948, 2400]);
+  });
+
+  it("takes the median like numpy", () => {
+    expect(median(new Float32Array([3, 1, 2]))).toBe(2);
+    expect(median(new Float32Array([4, 1, 3, 2]))).toBe(2.5);
+  });
+
+  it("finds several moments in one continuous video (PF11)", () => {
+    const starts = Array.from({ length: 12 }, (_, i) => i * 4);
+    const scores = [0.9, 0.89, 0.7, 0.6, 0.61, 0.62, 0.6, 0.7, 0.86, 0.87, 0.6, 0.59];
+    const hits = search(starts.map((s) => row("a.mp4", s, 1)), vectorsFor(scores), 2, Q, 2);
+    expect(hits.map((h) => h.start)).toEqual([0, 36]);
   });
 
   it("refuses rows and vectors that disagree", () => {
