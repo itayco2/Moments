@@ -64,9 +64,11 @@ def save_thumb(win: Window, thumbs: Path) -> str:
     return name
 
 
-def embed(model: SentenceTransformer, batch: list[Window]) -> np.ndarray:
-    vectors = model.encode([{"video": w.frames} for w in batch], convert_to_numpy=True,
-                           normalize_embeddings=True, batch_size=len(batch))
+def embed(model: SentenceTransformer, batch: list[Window], as_image: bool = False) -> np.ndarray:
+    # as_image embeds a window's middle frame as a picture, which is what the browser tool does.
+    inputs = ([{"image": Image.fromarray(w.frames[len(w.frames) // 2])} for w in batch] if as_image
+              else [{"video": w.frames} for w in batch])
+    vectors = model.encode(inputs, convert_to_numpy=True, normalize_embeddings=True, batch_size=len(batch))
     return vectors.astype(np.float32)
 
 
@@ -104,11 +106,12 @@ def prefetch(source: Iterator, depth: int) -> Iterator:
 
 
 def build(model: SentenceTransformer, videos: list[Path], out: Path, window: int, stride: int,
-          batch_size: int, tokens_per_frame: int | None = None) -> dict:
+          batch_size: int, tokens_per_frame: int | None = None, as_image: bool = False) -> dict:
     import torch  # deferred: keeps the fast test tier free of a multi-second torch import
 
+    processor = model[0].processor.image_processor if as_image else model[0].processor.video_processor
     if tokens_per_frame is not None:
-        model[0].processor.video_processor.max_soft_tokens = tokens_per_frame
+        processor.max_soft_tokens = tokens_per_frame
     if torch.cuda.is_available():
         free = torch.cuda.mem_get_info()[0] / 2**30
         print(f"   GPU memory free after loading the model: {free:.2f} GiB", flush=True)
@@ -123,7 +126,7 @@ def build(model: SentenceTransformer, videos: list[Path], out: Path, window: int
         torch.cuda.reset_peak_memory_stats()
     for n, batch in enumerate(prefetch(iter_batches(videos, window, stride, batch_size, thumbs),
                                        PREFETCH_BATCHES), start=1):
-        vectors.append(embed(model, [w for w, _ in batch]))
+        vectors.append(embed(model, [w for w, _ in batch], as_image))
         rows.extend({"video": w.video, "start": w.start, "end": w.end, "thumb": t} for w, t in batch)
         if n % LOG_EVERY_BATCHES == 0:
             rate = len(rows) / (time.perf_counter() - started)
@@ -136,7 +139,7 @@ def build(model: SentenceTransformer, videos: list[Path], out: Path, window: int
     wall = time.perf_counter() - started
     stats = {
         "window_s": window, "stride_s": stride, "windows": len(rows), "dim": int(matrix.shape[1]),
-        "tokens_per_frame": model[0].processor.video_processor.max_soft_tokens,
+        "tokens_per_frame": processor.max_soft_tokens, "as_image": as_image,
         "seconds_indexed": round(sum(max(r["end"] for r in rows if r["video"] == p.name) for p in videos)),
         "index_wall_s": round(wall, 1), "windows_per_s": round(len(rows) / wall, 2),
         "peak_gpu_gib": round(peak, 2) if peak is not None else None,

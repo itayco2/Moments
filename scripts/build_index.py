@@ -24,6 +24,8 @@ def main() -> int:
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--tokens", type=int, choices=(70, 140, 280), default=70,
                     help="vision tokens per frame; 70 matched 140 on the eval at 1.5x the speed (PF08)")
+    ap.add_argument("--as-image", action="store_true",
+                    help="embed each window's middle frame as a picture, as the browser tool does")
     ap.add_argument("--only", nargs="*", help="index only these file names")
     args = ap.parse_args()
 
@@ -32,7 +34,8 @@ def main() -> int:
         print(f"no .mp4 files in {args.footage}")
         return 1
     args.out.mkdir(parents=True, exist_ok=True)
-    stats = build(load_model(), videos, args.out, args.window, args.stride, args.batch, args.tokens)
+    stats = build(load_model(), videos, args.out, args.window, args.stride, args.batch, args.tokens,
+                  args.as_image)
     print(json.dumps(stats, indent=1))
     return 0
 
