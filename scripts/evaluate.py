@@ -81,17 +81,28 @@ def main() -> int:
     ap.add_argument("--index", type=Path, required=True)
     ap.add_argument("--dims", type=int, nargs="*", default=[768])
     ap.add_argument("--show", action="store_true", help="print every query's rank")
+    ap.add_argument("--query-vectors", type=Path,
+                    help="use query vectors from web/scripts/embed-queries.mjs (the browser's model) instead")
     args = ap.parse_args()
 
     spec = json.loads(QUERIES.read_text(encoding="utf-8"))
     queries, negatives = spec["queries"], spec["negatives"]
-    index, model = Index(args.index), load_model()
-
-    def encode(texts: list[str]) -> np.ndarray:
-        return model.encode_query(texts, convert_to_numpy=True, normalize_embeddings=True).astype(np.float32)
-
-    qvecs, nvecs = encode([q["query"] for q in queries]), encode(negatives)
-    report = {"index": args.index.name, "stats": index.stats, "by_dims": {}}
+    index = Index(args.index)
+    texts = [q["query"] for q in queries] + negatives
+    if args.query_vectors:
+        external = json.loads(args.query_vectors.read_text(encoding="utf-8"))
+        if external["texts"] != texts:
+            raise SystemExit(f"{args.query_vectors} was made from a different query list")
+        allvecs = np.asarray(external["vectors"], dtype=np.float32)
+        allvecs /= np.linalg.norm(allvecs, axis=1, keepdims=True)
+        source = f"transformers.js {external['dtype']}"
+    else:
+        allvecs = load_model().encode_query(texts, convert_to_numpy=True, normalize_embeddings=True)
+        allvecs = allvecs.astype(np.float32)
+        source = "sentence-transformers bf16"
+    qvecs, nvecs = allvecs[: len(queries)], allvecs[len(queries):]
+    report = {"index": args.index.name, "query_source": source, "stats": index.stats, "by_dims": {}}
+    print(f"queries embedded by {source}")
     for dims in args.dims:
         view = truncated(index, dims)
         summary, per_query = score(view, qvecs, queries)
