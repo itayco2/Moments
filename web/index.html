@@ -40,7 +40,10 @@
 
 <main>
   <section class="player">
-    <video id="video" muted playsinline preload="metadata"></video>
+    <div class="screen">
+      <video id="video" muted playsinline preload="metadata"></video>
+      <canvas id="preview" hidden></canvas>
+    </div>
     <div class="now">
       <div class="now-title"><b id="nowName">Nothing playing yet</b><span class="mono" id="nowAt"></span></div>
       <div class="timeline"><div class="moment" id="moment" hidden></div><div class="head" id="head" hidden></div></div>

@@ -8,6 +8,13 @@ export function clock(seconds: number): string {
   return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
+// Where a found moment's loop jumps back: a few seconds past it, but always inside the video. A moment near
+// the end used to loop past the last frame and freeze there (PREFLIGHT PF17).
+export function loopEnd(start: number, end: number, duration: number): number {
+  const wanted = Math.max(end, start + 6) + 2;
+  return Math.max(start + 0.5, Math.min(wanted, duration - 0.3));
+}
+
 export function megabytes(bytes: number): string {
   return `${Math.round(bytes / 1e6)} MB`;
 }

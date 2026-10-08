@@ -3,7 +3,7 @@
 import "./styles.css";
 import { IMAGES_PER_BATCH } from "./config";
 import { Embedder } from "./embedder";
-import { clock, megabytes } from "./format";
+import { clock, loopEnd, megabytes } from "./format";
 import { grabFrames } from "./frames";
 import {
   type DemoJson,
@@ -24,7 +24,6 @@ import { $, el, message, renderHits, setBar } from "./ui";
 const DEMO_BASE = `${import.meta.env.BASE_URL}demo/`;
 const DIM = 768;
 const K = 6;
-const LOOP_TAIL_S = 2;
 const TYPE_DELAY_MS = 45;
 
 type Mode = "demo" | "own";
@@ -112,6 +111,8 @@ function play(hit: Hit, info: VideoInfo | undefined, rows: HTMLElement[], row: H
     video.play().catch(() => undefined);
   };
   if (video.getAttribute("src") !== info.src) {
+    // Streaming a long NASA file to a far point takes a moment: show the found frame instead of black.
+    video.poster = hit.thumb;
     video.setAttribute("src", info.src);
     video.addEventListener("loadedmetadata", seek, { once: true });
   } else seek();
@@ -120,8 +121,14 @@ function play(hit: Hit, info: VideoInfo | undefined, rows: HTMLElement[], row: H
 video.addEventListener("timeupdate", () => {
   if (!current) return;
   $("head").style.left = `calc(${(video.currentTime / current.info.duration) * 100}% - 2px)`;
-  const loopEnd = Math.max(current.hit.end, current.hit.start + 6) + LOOP_TAIL_S;
-  if (video.currentTime > loopEnd) video.currentTime = current.hit.start;
+  if (video.currentTime > loopEnd(current.hit.start, current.hit.end, current.info.duration)) {
+    video.currentTime = current.hit.start;
+  }
+});
+video.addEventListener("ended", () => {
+  if (!current) return;
+  video.currentTime = current.hit.start;
+  void video.play().catch(() => undefined);
 });
 
 function typeThenSearch(text: string, vector: Float32Array): void {
@@ -213,8 +220,32 @@ async function addFiles(files: File[]): Promise<void> {
   } finally {
     indexing = false;
     $("indexBar").hidden = true;
+    stopReading();
     updateOwnPanel();
   }
+}
+
+// While indexing, the player shows each frame as the model reads it, and the playhead walks the video.
+function showReading(name: string, g: { t: number; duration: number; image: ImageData }): void {
+  const preview = $<HTMLCanvasElement>("preview");
+  if (preview.width !== g.image.width || preview.height !== g.image.height) {
+    preview.width = g.image.width;
+    preview.height = g.image.height;
+  }
+  preview.getContext("2d")?.putImageData(g.image, 0, 0);
+  preview.hidden = false;
+  $("nowName").textContent = `Reading ${name}`;
+  $("nowAt").textContent = `${clock(g.t)} of ${clock(g.duration)}`;
+  $("moment").hidden = true;
+  $("head").hidden = false;
+  $("head").style.left = `calc(${(g.t / g.duration) * 100}% - 2px)`;
+}
+
+function stopReading(): void {
+  $("preview").hidden = true;
+  $("head").hidden = true;
+  $("nowName").textContent = "Nothing playing yet";
+  $("nowAt").textContent = "";
 }
 
 async function indexFile(e: Embedder, file: File, key: string, url: string, which: string): Promise<void> {
@@ -244,6 +275,7 @@ async function indexFile(e: Embedder, file: File, key: string, url: string, whic
   };
   for await (const g of grabFrames(file)) {
     duration = g.duration;
+    showReading(name, g); // before the frame's pixels move to the worker
     pending.push(g);
     grabbed++;
     if (pending.length === IMAGES_PER_BATCH) {
@@ -276,6 +308,7 @@ function resetPlayer(): void {
   $("timing").classList.remove("weak");
   video.pause();
   video.removeAttribute("src");
+  video.removeAttribute("poster");
   video.load();
   $("nowName").textContent = "Nothing playing yet";
   $("nowAt").textContent = "";
@@ -299,7 +332,11 @@ function setMode(next: Mode): void {
   } else {
     setModel("Your videos are indexed in this browser. The first time downloads the picture model (about 370 MB).");
   }
-  if (mode === "own") updateOwnPanel();
+  if (mode === "own") {
+    updateOwnPanel();
+    // Opening this tab is intent enough: fetch the picture model now, so it is ready when files arrive.
+    void ensureModel(true).catch((err) => setModel(message(err)));
+  }
 }
 
 $("tabDemo").addEventListener("click", () => setMode("demo"));

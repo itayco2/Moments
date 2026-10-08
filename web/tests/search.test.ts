@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clock, fp16ToFloat32 } from "../src/format";
+import { clock, fp16ToFloat32, loopEnd } from "../src/format";
 import { dotAll, isWeakMatch, median, normalize, search, type Row } from "../src/search";
 
 // Two-dimensional unit vectors whose dot product with [1, 0] is exactly the given score.
@@ -80,6 +80,14 @@ describe("helpers", () => {
     expect(clock(0)).toBe("0:00");
     expect(clock(1954.7)).toBe("32:34");
     expect(clock(3725)).toBe("1:02:05");
+  });
+
+  it("loops a few seconds past a moment, but never past the end of the video (PF17)", () => {
+    expect(loopEnd(100, 101, 3000)).toBe(108);
+    expect(loopEnd(100, 108, 3000)).toBe(110);
+    // The case that froze: a moment 4 s before the end of a 120 s clip.
+    expect(loopEnd(116, 117, 120)).toBeCloseTo(119.7);
+    expect(loopEnd(119.9, 120, 120)).toBeCloseTo(120.4);
   });
 
   it("decodes half-precision floats", () => {
