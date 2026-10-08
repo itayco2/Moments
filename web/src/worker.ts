@@ -2,7 +2,7 @@
 // Runs EmbeddingGemma 2 off the main thread so the page never freezes while the model loads or works.
 
 import { AutoConfig, AutoModel, AutoProcessor, RawImage } from "@huggingface/transformers";
-import { DTYPE, type Dtype, IMAGE_TOKENS, MODEL_ID, QUERY_PREFIX } from "./config";
+import { type Dtype, IMAGE_TOKENS, MODEL_ID, QUERY_PREFIX, TEXT_DTYPE, VISION_DTYPE } from "./config";
 import type { Request, Response } from "./protocol";
 
 type Device = "webgpu" | "wasm";
@@ -44,7 +44,9 @@ async function load(id: number, vision: boolean): Promise<void> {
   > & { audio_config: unknown; vision_config: unknown };
   config.audio_config = null;
   if (!vision) config.vision_config = null;
-  const dtype: Record<string, Dtype> = vision ? { model: DTYPE, vision_encoder: DTYPE } : { model: DTYPE };
+  const dtype: Record<string, Dtype> = vision
+    ? { model: TEXT_DTYPE, vision_encoder: VISION_DTYPE }
+    : { model: TEXT_DTYPE };
   const next = await AutoModel.from_pretrained(MODEL_ID, { config, device, dtype, progress_callback });
   processor ??= await AutoProcessor.from_pretrained(MODEL_ID);
   processor.image_processor.max_soft_tokens = IMAGE_TOKENS;

@@ -3,7 +3,10 @@
 
 export const MODEL_ID = "onnx-community/embeddinggemma-2-ONNX";
 export type Dtype = "q4" | "q8";
-export const DTYPE: Dtype = "q4";
+// Measured on the 53 eval queries with the whole library built by transformers.js on WebGPU (EVAL.md):
+// 4-bit pictures cost 3 first-place hits (37 vs 40), 8-bit pictures match Python; 4-bit text costs nothing.
+export const TEXT_DTYPE: Dtype = "q4"; // 175 MB, all a demo visitor downloads
+export const VISION_DTYPE: Dtype = "q8"; // 195 MB more, only for your own videos
 export const IMAGE_TOKENS = 70;
 export const QUERY_PREFIX = "task: search result | query: ";
 export const FRAME_EVERY_S = 4;

@@ -56,7 +56,7 @@ function getEmbedder(): Embedder {
 async function ensureModel(vision: boolean): Promise<Embedder> {
   const e = getEmbedder();
   if (e.device && (e.vision || !vision)) return e;
-  setModel(vision ? "Loading the picture model" : "Loading the search model");
+  setModel(vision ? "Loading the picture model (about 370 MB the first time)" : "Loading the search model");
   await e.load(vision);
   setModel(`Search model ready, running ${e.device === "webgpu" ? "on your GPU" : "on your CPU (slower)"}`);
   return e;
