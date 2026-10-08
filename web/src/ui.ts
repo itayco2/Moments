@@ -43,7 +43,9 @@ export function renderHits(
     img.loading = "lazy";
     const info = el("div");
     const name = videos[hit.video]?.display ?? hit.video;
-    info.append(el("div", "name", name), el("div", "at mono", `${clock(hit.start)} to ${clock(hit.end)}`));
+    // A single frame has no meaningful end; an 8 s window does.
+    const when = hit.end - hit.start <= 1.5 ? `at ${clock(hit.start)}` : `${clock(hit.start)} to ${clock(hit.end)}`;
+    info.append(el("div", "name", name), el("div", "at mono", when));
     const bar = el("div", "bar");
     bar.append(el("i"));
     setBar(bar, 0.4 + (0.6 * (hit.score - worst)) / Math.max(best - worst, 1e-6));
