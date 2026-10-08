@@ -224,25 +224,35 @@ async function indexFile(e: Embedder, file: File, key: string, url: string, whic
   const bar = $("indexBar");
   bar.hidden = false;
   const t0 = performance.now();
-  const flush = async () => {
-    const vs = await e.embedImages(pending.map((p) => p.image));
-    pending.forEach((p, i) => {
+  // The model works on one batch while the next batch's frames are grabbed: seeking is the slow half.
+  let inflight: Promise<void> | null = null;
+  let grabbed = 0;
+  const embedBatch = async (batch: typeof pending) => {
+    const vs = await e.embedImages(batch.map((p) => p.image));
+    batch.forEach((p, i) => {
       rows.push({ video: key, start: p.t, end: p.t + 1, thumb: URL.createObjectURL(p.thumb) });
       vectors.push(vs[i]);
       thumbs.push(p.thumb);
     });
-    pending = [];
+  };
+  const schedule = async (batch: typeof pending) => {
+    if (inflight) await inflight;
+    inflight = embedBatch(batch);
   };
   for await (const g of grabFrames(file)) {
     duration = g.duration;
     pending.push(g);
-    if (pending.length === IMAGES_PER_BATCH) await flush();
-    const done = rows.length + pending.length;
-    setBar(bar, done / g.total);
-    const rate = done / ((performance.now() - t0) / 1000);
-    setOwnStatus(`Indexing ${name} (${which}): ${done} of ${g.total} frames, ${rate.toFixed(1)} per second`);
+    grabbed++;
+    if (pending.length === IMAGES_PER_BATCH) {
+      await schedule(pending);
+      pending = [];
+    }
+    setBar(bar, grabbed / g.total);
+    const rate = grabbed / ((performance.now() - t0) / 1000);
+    setOwnStatus(`Indexing ${name} (${which}): ${grabbed} of ${g.total} frames, ${rate.toFixed(1)} per second`);
   }
-  if (pending.length) await flush();
+  if (pending.length) await schedule(pending);
+  if (inflight) await inflight;
   own = withVideo(own, { key, display: name, duration, src: url }, rows, vectors);
   const flat = new Float32Array(vectors.length * DIM);
   vectors.forEach((v, i) => flat.set(v, i * DIM));
