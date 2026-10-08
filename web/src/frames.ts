@@ -53,7 +53,10 @@ function seek(video: HTMLVideoElement, t: number): Promise<void> {
   });
 }
 
-export async function* grabFrames(file: File, every = FRAME_EVERY_S): AsyncGenerator<Grabbed & { total: number }> {
+export async function* grabFrames(
+  file: File,
+  every = FRAME_EVERY_S,
+): AsyncGenerator<Grabbed & { total: number; duration: number }> {
   const url = URL.createObjectURL(file);
   try {
     const video = await openVideo(url);
@@ -71,6 +74,7 @@ export async function* grabFrames(file: File, every = FRAME_EVERY_S): AsyncGener
       yield {
         t,
         total: times.length,
+        duration: video.duration,
         image: frameCtx.getImageData(0, 0, w, h),
         thumb: await thumb.convertToBlob({ type: "image/webp", quality: 0.7 }),
       };
