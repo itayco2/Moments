@@ -31,7 +31,8 @@ test("the own-videos tab starts clean and says plainly that nothing is uploaded"
   await page.getByRole("button", { name: "astronauts on the Moon" }).click();
   await expect(page.locator("#nowName")).toHaveText("Apollo 11");
   await page.getByRole("button", { name: "Your videos" }).click();
-  await expect(page.locator("#drop")).toContainText("Nothing is uploaded");
+  await expect(page.locator("#drop")).toContainText("Drop videos here");
+  await expect(page.locator("#own .privacy")).toContainText("Nothing is uploaded");
   await expect(page.locator("#q")).toHaveValue("");
   await expect(page.locator("#nowName")).toHaveText("Nothing playing yet");
   await expect(page.locator("#model")).toContainText("picture model");

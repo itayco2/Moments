@@ -3,59 +3,144 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Moments</title>
-<meta name="description" content="Search hours of video by typing what you want to see. The model runs in your browser; nothing is uploaded.">
+<title>Moments: search any video by describing the moment</title>
+<meta name="description" content="Type what you want to see and jump to that second. The model runs in your browser; your videos are never uploaded.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Rubik:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-<header>
-  <div class="brand"><h1>Moments</h1><span class="tag mono">type what you want to see</span></div>
-  <div class="stats mono" id="stats"></div>
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="logo" href="#top">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#16161A"></rect><path d="M6.5 18.5h15" stroke="#F7F6F3" stroke-width="2" stroke-linecap="round"></path><rect x="15" y="8.5" width="3.2" height="13" rx="1.6" fill="#9D92FA"></rect></svg>
+      <span>Moments</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#measured">Accuracy</a>
+      <a class="pill-link" href="https://github.com/itayco2/Moments">View on GitHub
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"></path></svg>
+      </a>
+    </nav>
+  </div>
 </header>
 
-<nav class="switch" aria-label="Library">
-  <button type="button" id="tabDemo" class="on">NASA footage</button>
-  <button type="button" id="tabOwn">Your videos</button>
-</nav>
-
-<section class="own" id="own" hidden>
-  <label class="drop" id="drop">
-    <input type="file" id="files" accept="video/*" multiple hidden>
-    <b>Drop videos here, or choose files</b>
-    <span>Nothing is uploaded. The search model runs in this browser, and your videos never leave your computer.</span>
-  </label>
-  <div class="own-status mono" id="ownStatus"></div>
-  <div class="bar wide" id="indexBar" hidden><i></i></div>
-  <button type="button" class="link mono" id="clear" hidden>Forget my library</button>
-</section>
-
-<form class="search" id="form" autocomplete="off">
-  <input id="q" placeholder="Describe the moment you are looking for" maxlength="200" aria-label="Search">
-  <span class="timing mono" id="timing"></span>
-</form>
-<div class="model mono" id="model"></div>
-<div class="chips" id="chips"></div>
-
-<main>
-  <section class="player">
-    <div class="screen">
-      <video id="video" muted playsinline preload="metadata"></video>
-      <canvas id="preview" hidden></canvas>
-    </div>
-    <div class="now">
-      <div class="now-title"><b id="nowName">Nothing playing yet</b><span class="mono" id="nowAt"></span></div>
-      <div class="timeline"><div class="moment" id="moment" hidden></div><div class="head" id="head" hidden></div></div>
+<main id="top" class="wrap">
+  <section class="hero">
+    <div class="eyebrow mono">Open source · Runs in your browser</div>
+    <h1>Search any video by describing the moment.</h1>
+    <p class="lead">Type what you want to see and jump to that second. The model runs on your own computer, so your videos are never uploaded.</p>
+    <div class="hero-actions">
+      <a class="btn-primary" id="ctaOwn" href="#tool">Search your own videos</a>
+      <span class="hint">Free. No account. Works in Chrome on a desktop.</span>
     </div>
   </section>
-  <section class="results" id="results"><p class="empty">Results show up here.</p></section>
+
+  <section class="tool" id="tool" aria-label="Search">
+    <div class="tool-top">
+      <div class="switch" role="group" aria-label="Library">
+        <button type="button" id="tabDemo" class="on" aria-pressed="true">NASA demo <span class="mono dim">3 h</span></button>
+        <button type="button" id="tabOwn" aria-pressed="false">Your videos</button>
+      </div>
+      <div class="model mono"><span class="dot" aria-hidden="true"></span><span id="model"></span></div>
+    </div>
+
+    <section class="own" id="own" hidden>
+      <label class="drop" id="drop">
+        <input type="file" id="files" accept="video/*" multiple class="sr">
+        <span class="drop-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"></path></svg>
+        </span>
+        <span class="drop-text"><b>Drop videos here</b><span>MP4 or WebM, as many as you like</span></span>
+        <span class="btn-outline">Choose files</span>
+      </label>
+      <p class="privacy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        Nothing is uploaded. Your videos stay on this computer; only thumbnails and numbers are saved in this browser.
+      </p>
+      <div class="progress-card" id="indexCard" hidden>
+        <div class="own-status mono" id="ownStatus"></div>
+        <div class="bar wide" id="indexBar"><i></i></div>
+      </div>
+    </section>
+
+    <form class="search" id="form" autocomplete="off">
+      <label for="q" class="sr">Describe the moment you are looking for</label>
+      <div class="search-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <input id="q" placeholder="Describe the moment you are looking for" maxlength="200">
+        <span class="timing mono" id="timing"></span>
+      </div>
+      <button type="submit" class="btn-dark">Search</button>
+    </form>
+    <div class="chips" id="chips"></div>
+
+    <div class="stage">
+      <section class="player" aria-label="Player">
+        <div class="screen">
+          <video id="video" muted playsinline preload="metadata"></video>
+          <canvas id="preview" hidden></canvas>
+          <div class="badge mono" id="badge" hidden></div>
+        </div>
+        <div class="now">
+          <div class="now-title"><b id="nowName">Nothing playing yet</b><span class="mono" id="nowAt"></span></div>
+          <div class="timeline"><div class="moment" id="moment" hidden></div><div class="head" id="head" hidden></div></div>
+          <div class="ticks mono"><span id="tStart"></span><span id="tEnd"></span></div>
+        </div>
+      </section>
+      <section class="side" aria-label="Results">
+        <div class="side-head"><span>Top moments</span><span class="mono dim">best match first</span></div>
+        <div class="results" id="results"><p class="empty">Results show up here.</p></div>
+      </section>
+    </div>
+
+    <div class="tool-foot">
+      <span class="mono" id="stats"></span>
+      <button type="button" class="link" id="clear" hidden>Forget my library</button>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="section-head">
+      <div class="eyebrow mono">How it works</div>
+      <h2>Three steps, all inside your browser tab.</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="mono num">01</span><h3>It reads the video</h3><p>One frame every 4 seconds, taken by your browser. The file never leaves your computer.</p></div>
+      <div class="step"><span class="mono num">02</span><h3>Each frame becomes 768 numbers</h3><p>Google's open EmbeddingGemma 2 describes what is in the frame, running on your own GPU.</p></div>
+      <div class="step"><span class="mono num">03</span><h3>Your words find the closest frame</h3><p>Your sentence becomes numbers the same way. The nearest moment plays from that second.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="measured">
+    <div class="section-head">
+      <div class="eyebrow mono">Measured</div>
+      <h2>Tested before it was trusted.</h2>
+    </div>
+    <div class="stats-row">
+      <div><span class="big">74%</span><span>find the right moment first</span></div>
+      <div><span class="big">93%</span><span>have it in the top five</span></div>
+      <div><span class="big">27 s</span><span>to read a 9.5-minute video</span></div>
+    </div>
+    <div class="measured-foot">
+      <p>53 searches written before the first test, on 3 hours of NASA footage, on an RTX 3070. The method and every miss are public.</p>
+      <div class="measured-actions">
+        <a href="https://github.com/itayco2/Moments/blob/main/EVAL.md">Read the evaluation</a>
+        <a class="btn-primary" id="ctaOwn2" href="#tool">Search your own videos</a>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer class="mono">
-  <a href="https://github.com/itayco2/Moments">Open source on GitHub</a>
-  <span>NASA footage: public domain, not endorsed by NASA</span>
-  <span>Model: EmbeddingGemma 2 by Google DeepMind, Apache 2.0</span>
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <span class="footer-name">Moments</span>
+    <span>Open source, MIT</span>
+    <span>NASA footage: public domain, not endorsed by NASA</span>
+    <span>Model: EmbeddingGemma 2 by Google DeepMind, Apache 2.0</span>
+    <a href="https://github.com/itayco2/Moments">GitHub</a>
+  </div>
 </footer>
 <script type="module" src="/src/main.ts"></script>
 </body>

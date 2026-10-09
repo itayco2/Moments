@@ -36,7 +36,8 @@ export function renderHits(
   const best = hits[0].score;
   const worst = hits[hits.length - 1].score;
   return hits.map((hit) => {
-    const row = el("div", "hit");
+    const row = el("button", "hit");
+    row.type = "button";
     const img = el("img");
     img.src = hit.thumb;
     img.alt = "";

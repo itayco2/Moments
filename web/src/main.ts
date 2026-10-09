@@ -38,7 +38,18 @@ let typing: number | undefined;
 const video = $<HTMLVideoElement>("video");
 const input = $<HTMLInputElement>("q");
 const setModel = (text: string) => ($("model").textContent = text);
-const setOwnStatus = (text: string) => ($("ownStatus").textContent = text);
+const setOwnStatus = (text: string) => {
+  $("ownStatus").textContent = text;
+  $("indexCard").hidden = !text;
+};
+const setBadge = (text: string) => {
+  $("badge").textContent = text;
+  $("badge").hidden = !text;
+};
+const setTicks = (duration: number | null) => {
+  $("tStart").textContent = duration === null ? "" : "0:00";
+  $("tEnd").textContent = duration === null ? "" : clock(duration);
+};
 const activeLibrary = (): Library | null => (mode === "demo" ? (demo?.library ?? null) : own);
 
 // ---------- model ----------
@@ -102,6 +113,10 @@ function play(hit: Hit, info: VideoInfo | undefined, rows: HTMLElement[], row: H
   }
   current = { hit, info };
   $("nowAt").textContent = `${clock(hit.start)} of ${clock(info.duration)}`;
+  setBadge(`Playing from ${clock(hit.start)}`);
+  setTicks(info.duration);
+  // Start the playhead on the moment; a long NASA stream can take a second before its first time update.
+  $("head").style.left = `calc(${(hit.start / info.duration) * 100}% - 2px)`;
   const moment = $("moment");
   moment.hidden = $("head").hidden = false;
   moment.style.left = `${(hit.start / info.duration) * 100}%`;
@@ -236,6 +251,8 @@ function showReading(name: string, g: { t: number; duration: number; image: Imag
   preview.hidden = false;
   $("nowName").textContent = `Reading ${name}`;
   $("nowAt").textContent = `${clock(g.t)} of ${clock(g.duration)}`;
+  setBadge(`Reading the frame at ${clock(g.t)}`);
+  setTicks(g.duration);
   $("moment").hidden = true;
   $("head").hidden = false;
   $("head").style.left = `calc(${(g.t / g.duration) * 100}% - 2px)`;
@@ -246,6 +263,8 @@ function stopReading(): void {
   $("head").hidden = true;
   $("nowName").textContent = "Nothing playing yet";
   $("nowAt").textContent = "";
+  setBadge("");
+  setTicks(null);
 }
 
 async function indexFile(e: Embedder, file: File, key: string, url: string, which: string): Promise<void> {
@@ -313,12 +332,16 @@ function resetPlayer(): void {
   $("nowName").textContent = "Nothing playing yet";
   $("nowAt").textContent = "";
   $("moment").hidden = $("head").hidden = true;
+  setBadge("");
+  setTicks(null);
 }
 
 function setMode(next: Mode): void {
   mode = next;
-  $("tabDemo").classList.toggle("on", mode === "demo");
-  $("tabOwn").classList.toggle("on", mode === "own");
+  for (const [id, on] of [["tabDemo", mode === "demo"], ["tabOwn", mode === "own"]] as const) {
+    $(id).classList.toggle("on", on);
+    $(id).setAttribute("aria-pressed", String(on));
+  }
   $("own").hidden = mode !== "own";
   resetPlayer();
   showEmpty(mode === "demo" ? "Results show up here." : "Search your videos once they are indexed.");
@@ -341,6 +364,8 @@ function setMode(next: Mode): void {
 
 $("tabDemo").addEventListener("click", () => setMode("demo"));
 $("tabOwn").addEventListener("click", () => setMode("own"));
+// The page's main action: open the your-videos tab (the link itself scrolls to the tool).
+for (const id of ["ctaOwn", "ctaOwn2"]) $(id).addEventListener("click", () => mode !== "own" && setMode("own"));
 $("form").addEventListener("submit", (e) => {
   e.preventDefault();
   void runSearch(input.value);
