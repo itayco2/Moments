@@ -5,6 +5,11 @@ Type what you want to see and jump to that second in hours of video, in your bro
 Search 3 hours of NASA footage instantly, or drop in your own videos. The search model runs inside the browser tab,
 so your videos never leave your computer and the site costs nothing to host.
 
+**Try it: [moments-video.vercel.app](https://moments-video.vercel.app)** (Chrome on a desktop for your own videos;
+the NASA examples answer without downloading the model). A search is a link you can share:
+[moments-video.vercel.app/?q=astronauts+on+the+Moon](https://moments-video.vercel.app/?q=astronauts+on+the+Moon)
+opens on that moment.
+
 | type | lands on |
 |---|---|
 | a rocket lifting off | the last Space Shuttle climbing off the pad, 45:40 into a 49-minute replay |
