@@ -70,5 +70,5 @@ test("the own-videos tab starts clean and says plainly that nothing is uploaded"
   await expect(page.locator("#own .privacy")).toContainText("Nothing is uploaded");
   await expect(page.locator("#q")).toHaveValue("");
   await expect(page.locator("#nowName")).toHaveText("Nothing playing yet");
-  await expect(page.locator("#model")).toContainText("picture model");
+  await expect(page.locator("#ownStatus")).toContainText("AI model");
 });

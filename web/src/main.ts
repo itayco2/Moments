@@ -1,9 +1,9 @@
 // The page: the NASA demo library, your own library, the search box, and the player.
 
 import "./styles.css";
-import { IMAGES_PER_BATCH } from "./config";
+import { expectedBytes, IMAGES_PER_BATCH } from "./config";
 import { Embedder } from "./embedder";
-import { clock, loopEnd, megabytes } from "./format";
+import { clock, count, loopEnd } from "./format";
 import { grabFrames } from "./frames";
 import {
   type DemoJson,
@@ -17,6 +17,7 @@ import {
   withSource,
   withVideo,
 } from "./library";
+import { downloadStatus } from "./progress";
 import { type Hit, isWeakMatch, type Row, search } from "./search";
 import { matchExample, queryFromUrl, urlWithQuery } from "./share";
 import { clearVideos, loadVideos, saveVideo } from "./store";
@@ -26,6 +27,8 @@ const DEMO_BASE = `${import.meta.env.BASE_URL}demo/`;
 const DIM = 768;
 const K = 6;
 const TYPE_DELAY_MS = 45;
+// The examples carry their own query vectors; typed words need the text half of the model (sizes from model.json).
+const DEMO_MODEL_NOTE = `Examples answer instantly. Your own words download the search model once (about ${Math.round(expectedBytes(false) / 1e6)} MB).`;
 
 type Mode = "demo" | "own";
 let mode: Mode = "demo";
@@ -35,6 +38,10 @@ let current: { hit: Hit; info: VideoInfo } | null = null;
 let embedder: Embedder | null = null;
 let indexing = false;
 let typing: number | undefined;
+let loadStarted = 0;
+let loading: { vision: boolean; promise: Promise<void> } | null = null;
+let lastProgress: [number, number] = [0, 0];
+let waiting: { name: string; url: string } | null = null; // a dropped video shown while the model loads
 let searchId = 0; // bumped by every search and every tab switch; a search that is no longer current drops its result
 
 const video = $<HTMLVideoElement>("video");
@@ -59,18 +66,46 @@ const activeLibrary = (): Library | null => (mode === "demo" ? (demo?.library ??
 function getEmbedder(): Embedder {
   if (!embedder) {
     embedder = new Embedder();
-    embedder.onProgress = (loaded, total) =>
-      setModel(`Search model: downloading ${megabytes(loaded)} of ${megabytes(total)} (once, then cached)`);
+    embedder.onProgress = showModelProgress;
   }
   return embedder;
+}
+
+// The download is the long wait on a first visit: on the your-videos tab it gets the status card and its bar,
+// with speed and time left, not just the small grey line (it read like a slow upload).
+function showModelProgress(loaded: number, total: number): void {
+  lastProgress = [loaded, total];
+  const expected = Math.max(total, expectedBytes(loading?.vision ?? mode === "own"));
+  const line = downloadStatus(loaded, expected, (performance.now() - loadStarted) / 1000);
+  setModel(line);
+  if (mode !== "own") return;
+  setOwnStatus(waiting ? `${line}. Then it reads ${waiting.name}.` : `${line}. You can drop videos now.`);
+  $("indexBar").hidden = false;
+  setBar($("indexBar"), loaded / expected);
 }
 
 async function ensureModel(vision: boolean): Promise<Embedder> {
   const e = getEmbedder();
   if (e.device && (e.vision || !vision)) return e;
-  setModel(vision ? "Loading the picture model (about 370 MB the first time)" : "Loading the search model");
-  await e.load(vision);
+  // Opening the your-videos tab starts the download; a file dropped meanwhile waits for that same load.
+  if (!loading || (vision && !loading.vision)) {
+    loadStarted = performance.now();
+    showModelProgress(0, 0);
+    const promise = e.load(vision);
+    loading = { vision, promise };
+    void promise.then(
+      () => undefined,
+      () => undefined,
+    ).then(() => {
+      if (loading?.promise === promise) loading = null;
+    });
+  }
+  await loading.promise;
   setModel(`Search model ready, running ${e.device === "webgpu" ? "on your GPU" : "on your CPU (slower)"}`);
+  if (mode === "own" && !indexing) {
+    $("indexBar").hidden = true;
+    updateOwnPanel();
+  }
   return e;
 }
 
@@ -203,7 +238,7 @@ async function loadDemo(): Promise<void> {
   demo = parseDemo(json as DemoJson, bytes, DEMO_BASE);
   renderChips();
   renderStats();
-  setModel("Examples answer instantly. Your own words download the search model once (about 175 MB).");
+  setModel(DEMO_MODEL_NOTE);
   openSharedSearch();
 }
 
@@ -226,7 +261,7 @@ function renderStats(): void {
   const seconds = videos.reduce((sum, v) => sum + v.duration, 0);
   const what = mode === "demo" ? "of NASA footage" : "of your video";
   $("stats").textContent = videos.length
-    ? `${clock(seconds)} ${what} · ${videos.length} videos · ${lib.rows.length.toLocaleString()} moments`
+    ? `${clock(seconds)} ${what} · ${count(videos.length, "video")} · ${count(lib.rows.length, "moment")}`
     : "";
 }
 
@@ -250,7 +285,7 @@ async function restoreOwn(): Promise<void> {
 function updateOwnPanel(): void {
   const n = Object.keys(own.videos).length;
   $("clear").hidden = n === 0;
-  const status = n === 1 ? "1 video indexed. Type to search it." : `${n} videos indexed. Type to search them.`;
+  const status = `${count(n, "video")} indexed. Type to search ${n === 1 ? "it" : "them"}.`;
   if (!indexing) setOwnStatus(n ? status : "");
   if (mode === "own") renderStats();
 }
@@ -259,7 +294,9 @@ async function addFiles(files: File[]): Promise<void> {
   if (indexing || !files.length) return;
   indexing = true;
   try {
+    if (!(embedder?.device && embedder.vision)) showWaiting(files);
     const e = await ensureModel(true);
+    clearWaiting();
     for (const [n, file] of files.entries()) {
       const key = fileKey(file);
       const url = URL.createObjectURL(file);
@@ -269,11 +306,38 @@ async function addFiles(files: File[]): Promise<void> {
   } catch (err) {
     setOwnStatus(`Could not index: ${message(err)}`);
   } finally {
+    clearWaiting();
     indexing = false;
     $("indexBar").hidden = true;
     stopReading();
     updateOwnPanel();
   }
+}
+
+// A video dropped while the model loads shows up in the player at once, so it is clear it arrived.
+function showWaiting(files: File[]): void {
+  const name = displayName(files[0].name);
+  waiting = { name: files.length > 1 ? `${name} and ${count(files.length - 1, "more video")}` : name, url: URL.createObjectURL(files[0]) };
+  current = null;
+  $("moment").hidden = $("head").hidden = true;
+  setTicks(null);
+  video.removeAttribute("poster");
+  video.setAttribute("src", waiting.url);
+  // Seeking a hair in makes the browser decode and show the first frame instead of a black box.
+  video.addEventListener("loadedmetadata", () => (video.currentTime = 0.1), { once: true });
+  $("nowName").textContent = name;
+  $("nowAt").textContent = "waiting for the AI model";
+  setBadge("Waiting for the AI model");
+  showModelProgress(...lastProgress);
+}
+
+function clearWaiting(): void {
+  if (!waiting) return;
+  URL.revokeObjectURL(waiting.url);
+  waiting = null;
+  video.removeAttribute("src");
+  video.load();
+  setBadge("");
 }
 
 // While indexing, the player shows each frame as the model reads it, and the playhead walks the video.
@@ -390,14 +454,15 @@ function setMode(next: Mode): void {
   if (e?.device && (mode === "demo" || e.vision)) {
     setModel(`Search model ready, running ${e.device === "webgpu" ? "on your GPU" : "on your CPU (slower)"}`);
   } else if (mode === "demo") {
-    setModel("Examples answer instantly. Your own words download the search model once (about 175 MB).");
-  } else {
-    setModel("Your videos are indexed in this browser. The first time downloads the picture model (about 370 MB).");
+    setModel(DEMO_MODEL_NOTE);
   }
   if (mode === "own") {
     updateOwnPanel();
     // Opening this tab is intent enough: fetch the picture model now, so it is ready when files arrive.
-    void ensureModel(true).catch((err) => setModel(message(err)));
+    void ensureModel(true).catch((err) => {
+      setModel(message(err));
+      setOwnStatus(`The AI model could not load: ${message(err)}`);
+    });
   }
 }
 

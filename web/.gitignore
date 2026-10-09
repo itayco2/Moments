@@ -4,3 +4,6 @@ test-results/
 playwright-report/
 .vercel/
 .env*
+
+# the model copy fetch-model.mjs downloads at build time
+public/models/

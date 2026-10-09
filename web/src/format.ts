@@ -33,3 +33,8 @@ export function fp16ToFloat32(bits: Uint16Array): Float32Array {
   }
   return out;
 }
+
+// "1 video", "3 videos", "2,625 moments".
+export function count(n: number, word: string): string {
+  return `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
+}

@@ -1,9 +1,35 @@
 /// <reference lib="webworker" />
 // Runs EmbeddingGemma 2 off the main thread so the page never freezes while the model loads or works.
 
-import { AutoConfig, AutoModel, AutoProcessor, RawImage } from "@huggingface/transformers";
-import { type Dtype, IMAGE_TOKENS, MODEL_ID, QUERY_PREFIX, TEXT_DTYPE, VISION_DTYPE } from "./config";
+import { AutoConfig, AutoModel, AutoProcessor, env, RawImage } from "@huggingface/transformers";
+import {
+  type Dtype,
+  IMAGE_TOKENS,
+  MODEL_FILES,
+  MODEL_ID,
+  MODEL_REVISION,
+  modelPath,
+  QUERY_PREFIX,
+  SELF_HOSTED_MODEL,
+  TEXT_DTYPE,
+  VISION_DTYPE,
+} from "./config";
+import { sizeFor, withKnownLength } from "./fetch-length";
 import type { Request, Response } from "./protocol";
+
+// The live site serves its own copy of the model; a file missing there falls back to Hugging Face at the same
+// revision (transformers.js tries the local path first, then the remote one).
+if (SELF_HOSTED_MODEL) {
+  env.allowLocalModels = true;
+  env.localModelPath = modelPath(import.meta.env.BASE_URL);
+}
+const PINNED = { revision: MODEL_REVISION };
+const plainFetch = env.fetch;
+env.fetch = async (input: string | URL, init?: RequestInit) => {
+  const res = await plainFetch(input, init);
+  const size = sizeFor(String(input), MODEL_FILES);
+  return size === undefined ? res : withKnownLength(res, size);
+};
 
 type Device = "webgpu" | "wasm";
 
@@ -39,7 +65,7 @@ async function load(id: number, vision: boolean): Promise<void> {
     }
   };
   // Only the parts we need: the audio encoder is never loaded, the vision encoder only for your own videos.
-  const config = (await AutoConfig.from_pretrained(MODEL_ID)) as Awaited<
+  const config = (await AutoConfig.from_pretrained(MODEL_ID, PINNED)) as Awaited<
     ReturnType<typeof AutoConfig.from_pretrained>
   > & { audio_config: unknown; vision_config: unknown };
   config.audio_config = null;
@@ -47,8 +73,8 @@ async function load(id: number, vision: boolean): Promise<void> {
   const dtype: Record<string, Dtype> = vision
     ? { model: TEXT_DTYPE, vision_encoder: VISION_DTYPE }
     : { model: TEXT_DTYPE };
-  const next = await AutoModel.from_pretrained(MODEL_ID, { config, device, dtype, progress_callback });
-  processor ??= await AutoProcessor.from_pretrained(MODEL_ID);
+  const next = await AutoModel.from_pretrained(MODEL_ID, { ...PINNED, config, device, dtype, progress_callback });
+  processor ??= await AutoProcessor.from_pretrained(MODEL_ID, PINNED);
   processor.image_processor.max_soft_tokens = IMAGE_TOKENS;
   await model?.dispose?.();
   model = next;

@@ -1,6 +1,7 @@
 // Model settings shared by the worker and the page. DTYPE and IMAGE_TOKENS are set from measurements
 // (EVAL.md, "In the browser"), not guessed.
 
+import type { ModelFile } from "./fetch-length";
 import model from "./model.json";
 
 export const MODEL_ID = model.id;
@@ -11,6 +12,11 @@ export const MODEL_REVISION = model.revision;
 export const SELF_HOSTED_MODEL = import.meta.env.VITE_SELF_HOSTED_MODEL === "1";
 // Under the revision, so a file's URL never changes content and can be cached forever.
 export const modelPath = (base: string) => `${base}models/${MODEL_REVISION.slice(0, 7)}/`;
+export const MODEL_FILES: ModelFile[] = model.files;
+// What one load reads: the text half, plus the picture half for your own videos. Known up front, so the
+// progress bar is exact from the first byte instead of growing as each file starts.
+export const expectedBytes = (vision: boolean): number =>
+  MODEL_FILES.filter((f) => vision || !f.path.includes("vision_encoder")).reduce((sum, f) => sum + f.size, 0);
 
 export type Dtype = "q4" | "q8";
 const SUFFIX: Record<Dtype, string> = { q4: "_q4", q8: "_quantized" }; // transformers.js file naming
@@ -18,7 +24,7 @@ export const onnxFiles = (text: Dtype, vision: Dtype): string[] =>
   [`model${SUFFIX[text]}`, `vision_encoder${SUFFIX[vision]}`].flatMap((n) => [`onnx/${n}.onnx`, `onnx/${n}.onnx_data`]);
 // Measured on the 53 eval queries with the whole library built by transformers.js on WebGPU (EVAL.md):
 // 4-bit pictures cost 3 first-place hits (37 vs 40), 8-bit pictures match Python; 4-bit text costs nothing.
-export const TEXT_DTYPE: Dtype = "q4"; // 175 MB, all a demo visitor downloads
+export const TEXT_DTYPE: Dtype = "q4"; // 174 MB (+32 MB tokenizer), all a demo visitor downloads
 export const VISION_DTYPE: Dtype = "q8"; // 195 MB more, only for your own videos
 export const IMAGE_TOKENS = 70;
 export const QUERY_PREFIX = "task: search result | query: ";

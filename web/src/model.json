@@ -1,0 +1,46 @@
+{
+  "id": "onnx-community/embeddinggemma-2-ONNX",
+  "revision": "daa72c51243991dfcaf9f9137d2c573d8f7790c0",
+  "files": [
+    {
+      "path": "config.json",
+      "size": 5031
+    },
+    {
+      "path": "preprocessor_config.json",
+      "size": 560
+    },
+    {
+      "path": "processor_config.json",
+      "size": 1788
+    },
+    {
+      "path": "tokenizer.json",
+      "size": 32170510
+    },
+    {
+      "path": "tokenizer_config.json",
+      "size": 1599
+    },
+    {
+      "path": "chat_template.jinja",
+      "size": 1016
+    },
+    {
+      "path": "onnx/model_q4.onnx",
+      "size": 490742
+    },
+    {
+      "path": "onnx/model_q4.onnx_data",
+      "size": 174028800
+    },
+    {
+      "path": "onnx/vision_encoder_quantized.onnx",
+      "size": 162495
+    },
+    {
+      "path": "onnx/vision_encoder_quantized.onnx_data",
+      "size": 195228672
+    }
+  ]
+}
