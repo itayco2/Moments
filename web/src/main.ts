@@ -121,7 +121,9 @@ function syncUrl(query: string | null): void {
 function openSharedSearch(): void {
   const query = queryFromUrl(location.href);
   if (!query || !demo || mode !== "demo") return;
-  $("tool").scrollIntoView();
+  // Instant, not smooth: a smooth scroll needs animation frames, which a tab opened in the background does not
+  // get, and results arriving mid-scroll threw it off (it ended past the tool).
+  $("tool").scrollIntoView({ behavior: "instant", block: "start" });
   const example = matchExample(demo.examples, query);
   if (example) typeThenSearch(example.query, example.vector);
   else {
