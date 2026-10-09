@@ -30,7 +30,7 @@ for (;;) {
     if (firstFrameAt === null && /: \d+ of \d+ frames/.test(status)) firstFrameAt = Date.now();
     lastStatus = status;
   }
-  if (/videos indexed|Could not index/.test(status)) break;
+  if (/ indexed\. Type|Could not index/.test(status)) break;
   await page.waitForTimeout(500);
 }
 const total = (Date.now() - t0) / 1000;

@@ -12,7 +12,7 @@ test("a dropped clip is indexed in the browser and found by typing", async ({ pa
   await page.goto("http://localhost:5174/");
   await page.getByRole("button", { name: "Your videos" }).click();
   await page.locator("#files").setInputFiles(CLIP);
-  await expect(page.locator("#ownStatus")).toContainText("1 videos indexed", { timeout: 14 * 60_000 });
+  await expect(page.locator("#ownStatus")).toContainText("1 video indexed", { timeout: 14 * 60_000 });
 
   await page.locator("#q").fill("a rocket lifting off");
   await page.locator("#q").press("Enter");

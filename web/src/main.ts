@@ -248,7 +248,8 @@ async function restoreOwn(): Promise<void> {
 function updateOwnPanel(): void {
   const n = Object.keys(own.videos).length;
   $("clear").hidden = n === 0;
-  if (!indexing) setOwnStatus(n ? `${n} videos indexed. Type to search them.` : "");
+  const status = n === 1 ? "1 video indexed. Type to search it." : `${n} videos indexed. Type to search them.`;
+  if (!indexing) setOwnStatus(n ? status : "");
   if (mode === "own") renderStats();
 }
 
@@ -435,10 +436,11 @@ $("share").addEventListener("click", async () => {
   window.setTimeout(() => (button.textContent = "Copy link"), 2000);
 });
 $("clear").addEventListener("click", async () => {
-  await clearVideos().catch(() => undefined);
   own = emptyLibrary("Your videos", DIM);
-  showEmpty("Search your videos once they are indexed.");
+  // Only the your-videos tab shows its empty state: the visitor may already have switched to the NASA demo.
+  if (mode === "own") showEmpty("Search your videos once they are indexed.");
   updateOwnPanel();
+  await clearVideos().catch((err) => setOwnStatus(`Could not forget the saved library: ${message(err)}`));
 });
 
 loadDemo().catch((err) => showEmpty(`The demo library could not load: ${message(err)}`));
