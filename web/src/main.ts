@@ -18,6 +18,7 @@ import {
   withVideo,
 } from "./library";
 import { type Hit, isWeakMatch, type Row, search } from "./search";
+import { matchExample, queryFromUrl, urlWithQuery } from "./share";
 import { clearVideos, loadVideos, saveVideo } from "./store";
 import { $, el, message, renderHits, setBar } from "./ui";
 
@@ -90,11 +91,33 @@ async function runSearch(query: string, preset?: Float32Array): Promise<void> {
     const weak = isWeakMatch(hits);
     $("timing").textContent = weak ? `weak match · ${ms}` : ms;
     $("timing").classList.toggle("weak", weak);
+    const shareable = mode === "demo" && hits.length > 0;
+    syncUrl(shareable ? query : null);
+    $("share").hidden = !shareable;
     const rows = renderHits($("results"), hits, lib.videos, (hit, row) => play(hit, lib.videos[hit.video], rows, row));
     if (hits.length) play(hits[0], lib.videos[hits[0].video], rows, rows[0]);
   } catch (err) {
     $("timing").textContent = "";
     showEmpty(`Search failed: ${message(err)}`);
+  }
+}
+
+// The address always names the current demo search, so copying it shares what was found.
+function syncUrl(query: string | null): void {
+  const next = urlWithQuery(location.href, query);
+  if (next !== location.href) history.replaceState(history.state, "", next);
+}
+
+// A shared link (?q=...) opens on its search. Examples answer at once; other words load the search model first.
+function openSharedSearch(): void {
+  const query = queryFromUrl(location.href);
+  if (!query || !demo || mode !== "demo") return;
+  $("tool").scrollIntoView();
+  const example = matchExample(demo.examples, query);
+  if (example) typeThenSearch(example.query, example.vector);
+  else {
+    input.value = query;
+    void runSearch(query);
   }
 }
 
@@ -170,6 +193,7 @@ async function loadDemo(): Promise<void> {
   renderChips();
   renderStats();
   setModel("Examples answer instantly. Your own words download the search model once (about 175 MB).");
+  openSharedSearch();
 }
 
 function renderChips(): void {
@@ -325,6 +349,8 @@ function resetPlayer(): void {
   input.value = "";
   $("timing").textContent = "";
   $("timing").classList.remove("weak");
+  $("share").hidden = true;
+  syncUrl(null);
   video.pause();
   video.removeAttribute("src");
   video.removeAttribute("poster");
@@ -387,6 +413,16 @@ drop.addEventListener("drop", (e) => {
   e.preventDefault();
   drop.classList.remove("over");
   void addFiles(Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("video/")));
+});
+$("share").addEventListener("click", async () => {
+  const button = $("share");
+  try {
+    await navigator.clipboard.writeText(location.href);
+    button.textContent = "Link copied";
+  } catch {
+    button.textContent = "Copy it from the address bar";
+  }
+  window.setTimeout(() => (button.textContent = "Copy link"), 2000);
 });
 $("clear").addEventListener("click", async () => {
   await clearVideos().catch(() => undefined);

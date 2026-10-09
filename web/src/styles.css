@@ -128,6 +128,8 @@ video { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--med
 .now-title { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
 .now-title b { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .now-title span { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.now-right { display: flex; align-items: baseline; gap: 12px; }
+.now-right .link { padding: 0; }
 .timeline { position: relative; height: 6px; border-radius: 999px; background: var(--track); }
 .timeline .moment {
   position: absolute; top: -2px; height: 10px; min-width: 10px; border-radius: 999px;
@@ -195,7 +197,7 @@ h2 { font-size: 36px; line-height: 1.12; letter-spacing: -0.03em; font-weight: 6
   .header-row { height: 88px; }
   .logo span { font-size: 26px; }
   .logo svg { width: 38px; height: 38px; }
-  .nav, .hero, .section, .site-footer, .chips, .model, .side-head { display: none; }
+  .nav, .hero, .section, .site-footer, .chips, .model, .side-head, #share { display: none; }
   main.wrap { padding-top: 32px; }
   .tool { padding: 26px; gap: 22px; border-radius: 22px; }
   .switch button { height: 48px; font-size: 20px; padding: 0 20px; }

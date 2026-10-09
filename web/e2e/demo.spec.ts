@@ -26,6 +26,21 @@ test("one long shot shows up once, not once per frame (PF10)", async ({ page }) 
   expect(nearHurricane).toHaveLength(1);
 });
 
+test("a shared link opens on its search, and a new search rewrites the address", async ({ page }) => {
+  await page.goto(`${URL}?q=a+hurricane+seen+from+space`);
+  await expect(page.locator("#q")).toHaveValue("a hurricane seen from space");
+  await expect(page.locator(".hit").first()).toContainText("Earth from the Space Station");
+  await expect(page.locator("#share")).toBeVisible();
+
+  await page.getByRole("button", { name: "astronauts on the Moon" }).click();
+  await expect(page.locator("#nowName")).toHaveText("Apollo 11");
+  await expect(page).toHaveURL(/\?q=astronauts\+on\+the\+Moon$/);
+
+  await page.getByRole("button", { name: "Your videos" }).click();
+  await expect(page).toHaveURL(URL);
+  await expect(page.locator("#share")).toBeHidden();
+});
+
 test("the own-videos tab starts clean and says plainly that nothing is uploaded", async ({ page }) => {
   await page.goto(URL);
   await page.getByRole("button", { name: "astronauts on the Moon" }).click();
