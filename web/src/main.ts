@@ -35,6 +35,7 @@ let current: { hit: Hit; info: VideoInfo } | null = null;
 let embedder: Embedder | null = null;
 let indexing = false;
 let typing: number | undefined;
+let searchId = 0; // bumped by every search and every tab switch; a search that is no longer current drops its result
 
 const video = $<HTMLVideoElement>("video");
 const input = $<HTMLInputElement>("q");
@@ -81,23 +82,31 @@ async function runSearch(query: string, preset?: Float32Array): Promise<void> {
   const lib = activeLibrary();
   if (!lib) return showEmpty("The demo library is still loading.");
   if (!lib.rows.length) return showEmpty("Add some videos first: drop them in the box above.");
+  const startedIn = mode;
+  const id = ++searchId;
+  // The model can take a while to load: by then the visitor may have switched tabs or searched again.
+  const stale = () => id !== searchId;
   $("timing").textContent = "searching";
   try {
-    const e = preset ? null : await ensureModel(mode === "own");
+    const e = preset ? null : await ensureModel(startedIn === "own");
     const t0 = performance.now();
     const vector = preset ?? (await e!.embedText(query));
+    if (stale()) return;
     const hits = search(lib.rows, lib.vectors, lib.dim, vector, K);
     const ms = `${Math.max(1, Math.round(performance.now() - t0))} ms`;
     const weak = isWeakMatch(hits);
     $("timing").textContent = weak ? `weak match · ${ms}` : ms;
     $("timing").classList.toggle("weak", weak);
-    const shareable = mode === "demo" && hits.length > 0;
+    const shareable = startedIn === "demo" && hits.length > 0;
     syncUrl(shareable ? query : null);
     $("share").hidden = !shareable;
     const rows = renderHits($("results"), hits, lib.videos, (hit, row) => play(hit, lib.videos[hit.video], rows, row));
     if (hits.length) play(hits[0], lib.videos[hits[0].video], rows, rows[0]);
   } catch (err) {
+    if (stale()) return;
     $("timing").textContent = "";
+    $("share").hidden = true;
+    syncUrl(null);
     showEmpty(`Search failed: ${message(err)}`);
   }
 }
@@ -345,6 +354,7 @@ async function indexFile(e: Embedder, file: File, key: string, url: string, whic
 // Each tab starts clean: no query, no playing video from the other library.
 function resetPlayer(): void {
   clearInterval(typing);
+  searchId++;
   current = null;
   input.value = "";
   $("timing").textContent = "";

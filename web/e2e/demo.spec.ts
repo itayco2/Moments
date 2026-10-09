@@ -41,6 +41,24 @@ test("a shared link opens on its search, and a new search rewrites the address",
   await expect(page.locator("#share")).toBeHidden();
 });
 
+test("a search still loading when the visitor switches tabs never lands in the other tab", async ({ page, context }) => {
+  // Hold the model download, so the shared search is still waiting for it when the tab changes.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await context.route(/huggingface\.co|hf\.co/, async (route) => {
+    await held;
+    await route.abort();
+  });
+  await page.goto(`${URL}?q=a+cat+asleep+on+a+sofa`);
+  await expect(page.locator("#timing")).toHaveText("searching");
+  await page.getByRole("button", { name: "Your videos" }).click();
+  release();
+  await page.waitForTimeout(1500);
+  await expect(page).toHaveURL(URL);
+  await expect(page.locator("#results")).toHaveText("Search your videos once they are indexed.");
+  await expect(page.locator("#share")).toBeHidden();
+});
+
 test("the own-videos tab starts clean and says plainly that nothing is uploaded", async ({ page }) => {
   await page.goto(URL);
   await page.getByRole("button", { name: "astronauts on the Moon" }).click();
