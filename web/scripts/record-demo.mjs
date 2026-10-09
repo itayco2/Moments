@@ -37,7 +37,7 @@ await page.waitForFunction(() => document.getElementById("model")?.textContent?.
 });
 await page.waitForTimeout(1500);
 if (await page.locator("#clear").isVisible()) await page.locator("#clear").click();
-await page.getByRole("button", { name: "NASA footage" }).click();
+await page.locator("#tabDemo").click();
 await page.waitForTimeout(1500);
 
 const dir = mkdtempSync(join(tmpdir(), "moments-rec-"));
