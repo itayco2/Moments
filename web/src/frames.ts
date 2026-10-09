@@ -1,6 +1,7 @@
-// Grab one frame every few seconds from a local video file, entirely in the browser.
+// Grab frames from a local video file, entirely in the browser: every second for a short clip, up to every 4 s
+// for a long video (frameEvery in config.ts).
 
-import { DECODE_SHORT_SIDE, FRAME_EVERY_S } from "./config";
+import { DECODE_SHORT_SIDE, frameEvery } from "./config";
 
 export interface Grabbed {
   t: number;
@@ -11,8 +12,9 @@ export interface Grabbed {
 export const THUMB_WIDTH = 240;
 
 // Frame times 0, every, 2*every ... strictly inside the video (a seek to the very end can return no frame).
-export function frameTimes(duration: number, every = FRAME_EVERY_S): number[] {
+export function frameTimes(duration: number, every?: number): number[] {
   if (!Number.isFinite(duration) || duration <= 0) throw new Error("cannot read the length of this video");
+  every ??= frameEvery(duration);
   const times: number[] = [];
   for (let t = 0; t < duration - 0.05; t += every) times.push(t);
   return times;
@@ -55,7 +57,7 @@ function seek(video: HTMLVideoElement, t: number): Promise<void> {
 
 export async function* grabFrames(
   file: File,
-  every = FRAME_EVERY_S,
+  every?: number,
 ): AsyncGenerator<Grabbed & { total: number; duration: number }> {
   const url = URL.createObjectURL(file);
   try {

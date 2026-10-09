@@ -12,12 +12,14 @@ export interface Hit extends Row {
 }
 
 // A moment grows from its best window through time-adjacent neighbours (gap <= MERGE_GAP_S) whose score stays
-// within RUN_MARGIN_FRACTION of the way from the peak down to the median score; the moment and HIDE_S around it
-// are then hidden from later results (PF06, PF10, PF11). Same rule and values as moments/search.py, where the
-// values were chosen by scripts/sweep_merge.py.
+// within RUN_MARGIN_FRACTION of the way from the peak down to the median score; the moment and HIDE_FRAMES of
+// that video's frames on each side are then hidden from later results (PF06, PF10, PF11). Counted in frames, not
+// seconds: 16 s hid half of a 1-minute game clip sampled every second (PF21), and is still exactly what a video
+// sampled every 4 s gets. Same rule and values as moments/search.py, chosen by scripts/sweep_merge.py.
 export const MERGE_GAP_S = 4;
 export const RUN_MARGIN_FRACTION = 0.4;
-export const HIDE_S = 16;
+export const HIDE_FRAMES = 4;
+const LONE_FRAME_SPACING_S = 4; // a video with one frame has no spacing of its own
 
 // On the demo, every correct first result scored 0.742 or more and the four searches for absent things scored
 // 0.640 to 0.741 (EVAL.md). A round 0.74, not a line fitted to those 57 numbers: it flags 3 of the 4 negatives
@@ -34,10 +36,16 @@ export function median(values: Float32Array): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-const neighbourCache = new WeakMap<Row[], { prev: Int32Array; next: Int32Array }>();
+interface Neighbours {
+  prev: Int32Array;
+  next: Int32Array;
+  hide: Float32Array; // seconds hidden on each side of a moment found at this row
+}
+const neighbourCache = new WeakMap<Row[], Neighbours>();
 
-// Previous and next row of the same video in time order (-1 at the ends), computed once per library.
-export function neighbours(rows: Row[]): { prev: Int32Array; next: Int32Array } {
+// Previous and next row of the same video in time order (-1 at the ends), and each video's hide window from
+// its median frame spacing, computed once per library.
+export function neighbours(rows: Row[]): Neighbours {
   const cached = neighbourCache.get(rows);
   if (cached) return cached;
   const order = Array.from(rows.keys()).sort((a, b) =>
@@ -45,14 +53,21 @@ export function neighbours(rows: Row[]): { prev: Int32Array; next: Int32Array } 
   );
   const prev = new Int32Array(rows.length).fill(-1);
   const next = new Int32Array(rows.length).fill(-1);
-  for (let j = 1; j < order.length; j++) {
-    const [a, b] = [order[j - 1], order[j]];
-    if (rows[a].video === rows[b].video) {
-      next[a] = b;
-      prev[b] = a;
+  const hide = new Float32Array(rows.length);
+  for (let first = 0; first < order.length; ) {
+    let last = first;
+    while (last + 1 < order.length && rows[order[last + 1]].video === rows[order[first]].video) last++;
+    const gaps = new Float32Array(last - first);
+    for (let j = first + 1; j <= last; j++) {
+      next[order[j - 1]] = order[j];
+      prev[order[j]] = order[j - 1];
+      gaps[j - first - 1] = rows[order[j]].start - rows[order[j - 1]].start;
     }
+    const window = HIDE_FRAMES * (gaps.length ? median(gaps) : LONE_FRAME_SPACING_S);
+    for (let j = first; j <= last; j++) hide[order[j]] = window;
+    first = last + 1;
   }
-  const result = { prev, next };
+  const result = { prev, next, hide };
   neighbourCache.set(rows, result);
   return result;
 }
@@ -77,7 +92,7 @@ export function search(rows: Row[], vectors: Float32Array, dim: number, query: F
     throw new Error(`${rows.length} rows but ${vectors.length / dim} vectors`);
   }
   const scores = dotAll(vectors, dim, query);
-  const { prev, next } = neighbours(rows);
+  const { prev, next, hide } = neighbours(rows);
   const mid = median(scores);
   const hidden = new Uint8Array(rows.length);
   const hits: Hit[] = [];
@@ -92,8 +107,8 @@ export function search(rows: Row[], vectors: Float32Array, dim: number, query: F
     while (next[hi] >= 0 && adjacent(rows, hi, next[hi]) && scores[next[hi]] >= floor) hi = next[hi];
     const start = rows[lo].start;
     const end = rows[hi].end;
-    for (let j = lo; j >= 0 && rows[j].end > start - HIDE_S; j = prev[j]) hidden[j] = 1;
-    for (let j = lo; j >= 0 && rows[j].start < end + HIDE_S; j = next[j]) hidden[j] = 1;
+    for (let j = lo; j >= 0 && rows[j].end > start - hide[i]; j = prev[j]) hidden[j] = 1;
+    for (let j = lo; j >= 0 && rows[j].start < end + hide[i]; j = next[j]) hidden[j] = 1;
   }
   return hits;
 }

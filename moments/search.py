@@ -13,14 +13,16 @@ if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
 # A moment grows from its best window through time-adjacent neighbours (gap <= MERGE_GAP_S) whose score
-# stays within RUN_MARGIN_FRACTION of the way from the peak down to the median score; the moment and HIDE_S
-# around it are then hidden from later results. A long shot shows up once, and one continuous video still
+# stays within RUN_MARGIN_FRACTION of the way from the peak down to the median score; the moment and
+# HIDE_FRAMES of that video's frames on each side are then hidden from later results. Counted in frames: 16 s
+# hid half of a 1-minute game clip sampled every second (PF21), and is still what 4 s spacing gets. A long shot shows up once, and one continuous video still
 # yields several moments (PF06, PF10, PF11). The margin is relative: a shot's scores drift more for some
 # queries. Chosen by scripts/sweep_merge.py on the demo index: first-place accuracy was the same for every
 # setting tried; 0.4 with 16 s gave the best top-5 (0.94) and the fewest repeats (9 of 36 example results).
 MERGE_GAP_S = 4.0
 RUN_MARGIN_FRACTION = 0.4
-HIDE_S = 16.0
+HIDE_FRAMES = 4
+LONE_FRAME_SPACING_S = 4.0  # a video with one window has no spacing of its own
 
 
 @dataclass(frozen=True)
@@ -42,6 +44,7 @@ class Index:
         if len(self.rows) != len(self.vectors):
             raise ValueError(f"{folder}: {len(self.rows)} rows but {len(self.vectors)} vectors")
         self.prev, self.next = neighbours(self.rows)
+        self.spacing = frame_spacing(self.rows)
 
     def embed_query(self, model: SentenceTransformer, query: str) -> np.ndarray:
         return model.encode_query(query, convert_to_numpy=True, normalize_embeddings=True).astype(np.float32)
@@ -66,11 +69,12 @@ class Index:
             while nxt[hi] >= 0 and adjacent(rows, hi, nxt[hi]) and scores[nxt[hi]] >= floor:
                 hi = nxt[hi]
             start, end = rows[lo]["start"], rows[hi]["end"]
+            hide = HIDE_FRAMES * self.spacing[row["video"]]
             j = lo
-            while j >= 0 and rows[j]["end"] > start - HIDE_S:
+            while j >= 0 and rows[j]["end"] > start - hide:
                 hidden[j], j = True, prev[j]
             j = lo
-            while j >= 0 and rows[j]["start"] < end + HIDE_S:
+            while j >= 0 and rows[j]["start"] < end + hide:
                 hidden[j], j = True, nxt[j]
         return hits
 
@@ -83,6 +87,18 @@ def neighbours(rows: list[dict]) -> tuple[list[int], list[int]]:
         if rows[a]["video"] == rows[b]["video"]:
             nxt[a], prev[b] = b, a
     return prev, nxt
+
+
+def frame_spacing(rows: list[dict]) -> dict[str, float]:
+    """Each video's median gap between consecutive window starts."""
+    starts: dict[str, list[float]] = {}
+    for row in rows:
+        starts.setdefault(row["video"], []).append(row["start"])
+    out = {}
+    for video, times in starts.items():
+        gaps = np.diff(sorted(times))
+        out[video] = float(np.median(gaps)) if len(gaps) else LONE_FRAME_SPACING_S
+    return out
 
 
 def adjacent(rows: list[dict], a: int, b: int) -> bool:

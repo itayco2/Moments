@@ -106,6 +106,19 @@ def test_search_merges_a_shot_of_frames_visited_out_of_order(tmp_path):
     assert top_starts(tmp_path / "run", rows, scores, 3)[:2] == [1948, 2400]
 
 
+def test_search_hides_four_frames_in_each_videos_own_spacing(tmp_path):
+    # A 30 s game clip with a frame every second next to a long video with a frame every 4 s (PF21).
+    rows = frames(range(31), video="clip.mp4") + frames(range(0, 124, 4), video="long.mp4")
+    peaks = {("clip.mp4", 10): 0.9, ("long.mp4", 40): 0.88, ("long.mp4", 52): 0.86,
+             ("clip.mp4", 16): 0.85, ("long.mp4", 60): 0.84}
+    s = np.array([peaks.get((r["video"], r["start"]), 0.3) for r in rows])
+    index = make_index(tmp_path / "spacing", rows, np.stack([s, np.sqrt(1 - s**2)], axis=1))
+    hits = index.search(np.array([1.0, 0.0], dtype=np.float32), k=4)
+    # 6 s apart in the clip is a new moment; 12 s apart in the long video is still inside its 16 s.
+    assert [(h.video, h.start) for h in hits] == [("clip.mp4", 10), ("long.mp4", 40), ("clip.mp4", 16),
+                                                 ("long.mp4", 60)]
+
+
 def test_search_finds_several_moments_in_one_continuous_video(tmp_path):
     # Frames every 4 s with no gaps: a match, a dip, another match. Not one moment for the video (PF11).
     starts = list(range(0, 48, 4))

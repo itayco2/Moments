@@ -21,6 +21,19 @@ describe("search", () => {
     ]);
   });
 
+  it("hides 4 frames around a moment, counted in that video's own frame spacing (PF21)", () => {
+    // A 30 s game clip with a frame every second next to a long video with a frame every 4 s.
+    const clip = Array.from({ length: 31 }, (_, i) => row("clip.mp4", i, 1));
+    const long = Array.from({ length: 31 }, (_, i) => row("long.mp4", i * 4, 1));
+    const peaks: Record<string, number> = { "clip.mp4@10": 0.9, "long.mp4@40": 0.88, "long.mp4@52": 0.86,
+      "clip.mp4@16": 0.85, "long.mp4@60": 0.84 };
+    const rows = [...clip, ...long];
+    const scores = rows.map((r) => peaks[`${r.video}@${r.start}`] ?? 0.3);
+    const hits = search(rows, vectorsFor(scores), 2, Q, 4);
+    // 6 s apart in the clip is a new moment; 12 s apart in the long video is still inside its 16 s.
+    expect(hits.map((h) => `${h.video}@${h.start}`)).toEqual(["clip.mp4@10", "long.mp4@40", "clip.mp4@16", "long.mp4@60"]);
+  });
+
   it("merges adjacent windows of one shot (PF06)", () => {
     const rows = [0, 8, 16, 60].map((s) => row("a.mp4", s));
     const hits = search(rows, vectorsFor([0.9, 0.89, 0.88, 0.5]), 2, Q, 3);

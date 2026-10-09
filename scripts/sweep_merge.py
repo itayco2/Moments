@@ -55,7 +55,7 @@ def main() -> int:
     index, examples = S.Index(args.index), example_vectors()
     print("fraction  hide_s  hit@1  hit@5  MRR@10  repeats in 6 examples x top 6")
     for fraction, hide in itertools.product((0.0, 0.1, 0.25, 0.4), (4.0, 8.0, 16.0)):
-        S.RUN_MARGIN_FRACTION, S.HIDE_S = fraction, hide
+        S.RUN_MARGIN_FRACTION, S.HIDE_FRAMES = fraction, hide / 4  # the demo index has a window every 4 s
         m = metrics(score(index, qvecs, spec["queries"])[1])
         print(f"  {fraction:4.2f}    {hide:4.0f}   {m['hit@1']:.2f}   {m['hit@5']:.2f}   {m['mrr@10']:.3f}   "
               f"{repeats(index, examples)}")
