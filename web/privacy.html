@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Moments privacy</title>
+<link href="/fonts/fonts.css" rel="stylesheet">
 <style>
   body { margin: 0; background: #f7f6f3; color: #16161a; font: 16px/1.6 Geist, ui-sans-serif, system-ui, sans-serif; }
   main { max-width: 680px; margin: 0 auto; padding: 48px 20px; }
@@ -22,9 +23,14 @@
   <h2>What leaves your computer</h2>
   <p>Nothing you type into the search bar, and nothing about you. The extension makes two kinds of downloads:</p>
   <ul>
-    <li>The AI model, about 400 MB, once, from moments-video.vercel.app (or Hugging Face as a backup). The download starts when you open your first YouTube video after installing (with background reading off, at your first search).</li>
-    <li>YouTube's preview images of the video you are watching, from YouTube's image server (i.ytimg.com). Each request names that video, the same images YouTube's own player loads, and is sent without your cookies. With background reading off in the extension's menu, these images are not downloaded.</li>
+    <li>The AI model, about 400 MB, once, from moments-video.vercel.app (or Hugging Face as a backup). The download starts at your first search (or when you open a video, if you turn background reading on in the extension's menu).</li>
+    <li>YouTube's preview images of the video you are watching, from YouTube's image server (i.ytimg.com). Each request names that video, the same images YouTube's own player loads, and is sent without your cookies. With background reading off (the default), they are downloaded only for a video you search.</li>
   </ul>
+  <h2>The website</h2>
+  <p>moments-video.vercel.app is hosted by Vercel. Like any web host, Vercel's servers see your IP address and the pages you request (server logs, under <a href="https://vercel.com/legal/privacy-policy">Vercel's privacy policy</a>). The site sets no cookies and runs no analytics or ads, and its fonts are served from the site itself.</p>
+  <p>The demo videos stream from NASA's servers (images-assets.nasa.gov). Videos you add from your own computer never leave it: they, the numbers made from them and the AI model are kept in your browser's storage for this site, and clearing the site's data removes them.</p>
+  <h2>Who is behind it</h2>
+  <p>Moments is an independent open-source project by Itay Cohen (MIT License). It is not affiliated with, sponsored or endorsed by YouTube, Google or NASA. YouTube is a trademark of Google LLC. Footage in the demo and in the extension's video: NASA/JPL-Caltech. Third-party licenses: <a href="/third-party-notices.txt">third-party-notices.txt</a>.</p>
   <h2>Contact</h2>
   <p>Questions: open an issue at <a href="https://github.com/itayco2/Moments/issues">github.com/itayco2/Moments</a>.</p>
 </main>

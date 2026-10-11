@@ -55,6 +55,9 @@ for (const [name, entry] of [["content", "src/content/main.ts"], ["page-reader",
 
 await cp(new URL("./manifest.json", import.meta.url), new URL("./dist/manifest.json", import.meta.url));
 await cp(new URL("./icons/", import.meta.url), new URL("./dist/icons/", import.meta.url), { recursive: true });
+// The zip carries its licenses: Moments' own and the notices of the bundled runtime and the downloaded model.
+await cp(new URL("../LICENSE", import.meta.url), new URL("./dist/LICENSE.txt", import.meta.url));
+await cp(new URL("./THIRD_PARTY_NOTICES.txt", import.meta.url), new URL("./dist/THIRD_PARTY_NOTICES.txt", import.meta.url));
 await mkdir(new URL("./dist/ort/", import.meta.url), { recursive: true });
 for (const f of ORT_FILES) await cp(`${ortDir}${f}`, fileURLToPath(new URL(`./dist/ort/${f}`, import.meta.url)));
 assertNoRemoteCode(out);

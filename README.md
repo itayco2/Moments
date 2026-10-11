@@ -128,3 +128,11 @@ does not endorse this project.
 Model: [EmbeddingGemma 2](https://huggingface.co/google/embeddinggemma-2) by Google DeepMind, Apache 2.0; the browser
 uses the [ONNX build](https://huggingface.co/onnx-community/embeddinggemma-2-ONNX) with transformers.js.
 Code: MIT.
+Third-party licenses: [THIRD_PARTY_NOTICES.txt](extension/THIRD_PARTY_NOTICES.txt) (also inside the extension zip, and on
+the site at /third-party-notices.txt). The site's fonts (Geist, Geist Mono) are served by the site itself under the SIL
+Open Font License.
+
+Moments is an independent project. It is not affiliated with, sponsored or endorsed by YouTube, Google or NASA;
+YouTube is a trademark of Google LLC. The software is provided as is, without warranty (see LICENSE). The extension
+works inside your own YouTube tab: it does not download, store or share videos, keeps only the numbers it makes from
+the frames, and never touches ads (a read or a jump waits for an ad to end).

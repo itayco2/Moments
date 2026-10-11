@@ -4,7 +4,7 @@
 //   node scripts/fetch-model.mjs public/models
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { expectedHash, gitBlobSha1, ranges } from "./model-files.mjs";
 
@@ -84,3 +84,7 @@ for (const { path: file, size: listed } of model.files) {
 }
 const seconds = (Date.now() - t0) / 1000;
 console.log(`model ready in ${out}: ${(bytes / 1e6).toFixed(0)} MB downloaded in ${seconds.toFixed(0)} s`);
+// The served copy carries its license (Apache 2.0) and where it comes from, as the license asks of a redistribution.
+const apache = await readFile(new URL("../node_modules/@huggingface/transformers/LICENSE", import.meta.url), "utf8");
+await writeFile(join(out, "LICENSE"), apache);
+await writeFile(join(out, "NOTICE.txt"), `EmbeddingGemma 2 by Google DeepMind, ONNX conversion by onnx-community.\nCopied unmodified from https://huggingface.co/${model.id} at revision ${model.revision}.\nLicensed under the Apache License, Version 2.0 (LICENSE in this folder).\n`);
