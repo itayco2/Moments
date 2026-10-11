@@ -1,6 +1,10 @@
 // The full-detail read: step the viewer's own player through the video, grab each frame, put everything back.
 // YouTube refuses a second, hidden player inside youtube.com (Error 152-4), so the viewer's player is the only
 // source of real frames; the read happens once per video and the viewer can stop it at any moment.
+//
+// YouTube plays ads and the next video in the same <video>, so the read never pauses or seeks while an ad shows,
+// checks after every seek that the player still holds the video being read, and puts the viewer's second back only
+// onto that video (PREFLIGHT PF27, PF28).
 import { scaledSize } from "../../../web/src/frames";
 import type { Frame } from "../protocol";
 
@@ -14,8 +18,9 @@ export interface Seekable extends EventTarget {
 export interface FullReadDeps {
   video: Seekable;
   times: number[];
-  capture(): string;
+  capture(): string | null; // null: this frame has no picture to grab
   isAd(): boolean;
+  isCurrent(): boolean; // the player still holds the video being read
   send(frames: Frame[]): void;
   progress(done: number, total: number): void;
   signal: AbortSignal;
@@ -23,10 +28,17 @@ export interface FullReadDeps {
   adPollMs?: number;
 }
 
+export interface ReadOutcome {
+  complete: boolean; // went through every planned time
+  sent: number; // frames handed to send()
+  blank: number; // frames skipped because the player had no picture
+}
+
 export const BATCH = 8;
 export const JPEG_QUALITY = 0.9;
 const SEEK_TIMEOUT_MS = 5000;
 const AD_POLL_MS = 500;
+const AD_RETRIES_PER_FRAME = 2; // an ad that starts right after a seek: wait it out and seek again, twice at most
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function seek(video: Seekable, t: number, timeoutMs: number): Promise<boolean> {
@@ -44,44 +56,74 @@ function seek(video: Seekable, t: number, timeoutMs: number): Promise<boolean> {
   });
 }
 
-export async function fullRead(d: FullReadDeps): Promise<boolean> {
-  const { video, times, signal } = d;
+// Waits while an ad shows, touching nothing. False when the read was stopped or the video changed meanwhile.
+async function adOver(d: FullReadDeps): Promise<boolean> {
+  while (d.isAd()) {
+    if (d.signal.aborted) return false;
+    await sleep(d.adPollMs ?? AD_POLL_MS);
+  }
+  return !d.signal.aborted && d.isCurrent();
+}
+
+// One frame: "stop" when the read must end, null when the frame is skipped, else the frame.
+async function grab(d: FullReadDeps, t: number): Promise<Frame | "stop" | null> {
+  for (let tries = 0; tries <= AD_RETRIES_PER_FRAME; tries++) {
+    if (!(await adOver(d))) return "stop";
+    const landed = await seek(d.video, t, d.seekTimeoutMs ?? SEEK_TIMEOUT_MS);
+    if (d.signal.aborted || !d.isCurrent()) return "stop"; // never grab a frame of another video
+    if (d.isAd()) continue; // the seek started an ad: that picture is the ad's
+    if (!landed) return null; // a seek that never finishes would grab the wrong frame
+    const jpeg = d.capture();
+    return jpeg ? { t, jpeg } : null;
+  }
+  return null;
+}
+
+export async function fullRead(d: FullReadDeps): Promise<ReadOutcome> {
+  const { video, times } = d;
+  const outcome: ReadOutcome = { complete: false, sent: 0, blank: 0 };
+  if (d.isAd() || !d.isCurrent()) return outcome; // the caller waits for the ad; this never touches one
   const saved = { t: video.currentTime, playing: !video.paused };
   let batch: Frame[] = [];
-  let done = 0;
+  const flush = () => {
+    if (batch.length) d.send(batch);
+    outcome.sent += batch.length;
+    batch = [];
+  };
   video.pause();
   try {
-    for (const t of times) {
-      while (d.isAd()) {
-        if (signal.aborted) return false;
-        await sleep(d.adPollMs ?? AD_POLL_MS);
-      }
-      if (signal.aborted) return false;
-      if (await seek(video, t, d.seekTimeoutMs ?? SEEK_TIMEOUT_MS)) {
-        batch.push({ t, jpeg: d.capture() });
-        if (batch.length === BATCH) {
-          d.send(batch);
-          batch = [];
-        }
-      }
-      d.progress(++done, times.length);
+    for (const [i, t] of times.entries()) {
+      const frame = await grab(d, t);
+      if (frame === "stop") return outcome;
+      if (frame) batch.push(frame);
+      else outcome.blank++;
+      if (batch.length === BATCH) flush();
+      d.progress(i + 1, times.length);
     }
-    return !signal.aborted;
+    outcome.complete = !d.signal.aborted;
+    return outcome;
   } finally {
-    if (batch.length) d.send(batch);
-    video.currentTime = saved.t;
-    if (saved.playing) void video.play().catch(() => undefined);
+    flush(); // every frame in the batch was grabbed while the video was current
+    if (!d.isAd() && d.isCurrent()) {
+      video.currentTime = saved.t;
+      if (saved.playing) void video.play().catch(() => undefined);
+    }
   }
 }
 
-export function jpegCapture(video: HTMLVideoElement): () => string {
-  const { w, h } = scaledSize(video.videoWidth, video.videoHeight);
+// Grabs the player's current picture at 360 px on the short side. The size is worked out for every frame: the
+// player's picture size can change during a read (quality switch) and is 0 before the video has a picture.
+export function jpegCapture(video: HTMLVideoElement): () => string | null {
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("no 2D canvas on this page");
   return () => {
+    if (!(video.videoWidth > 0 && video.videoHeight > 0)) return null;
+    const { w, h } = scaledSize(video.videoWidth, video.videoHeight);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
     ctx.drawImage(video, 0, 0, w, h);
     return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
   };

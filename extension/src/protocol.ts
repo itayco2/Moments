@@ -31,17 +31,24 @@ export interface Frame {
   t: number;
   jpeg: string;
 }
-export type Kind = "none" | "preview" | "full";
+// What the engine holds for a video: nothing, preview frames, a full-detail read that stopped early ("partial":
+// full detail from 0:00 up to `readUntil`, preview frames after it when the video has them), or a full-detail read.
+export type Kind = "none" | "preview" | "partial" | "full";
 
+// A full-detail read is one tab's: full-start opens it (after: null from 0:00, or the time a partial read reached),
+// full-frames carry its frames, full-end closes it with how many frames the tab sent. Only a read that went through
+// to the end and arrived whole becomes "full".
 export type ToEngine =
   | { type: "open"; videoId: string; duration: number; spec: string | null; autoRead: boolean }
   | { type: "search"; id: number; videoId: string; query: string }
+  | { type: "full-start"; videoId: string; after: number | null }
   | { type: "full-frames"; videoId: string; frames: Frame[] }
-  | { type: "full-end"; videoId: string; complete: boolean };
+  | { type: "full-end"; videoId: string; complete: boolean; sent: number };
 
 export type ModelMessage = {
   type: "model";
-  phase: "idle" | "loading" | "ready" | "error";
+  // "restarting": the model stopped (a lost or stuck GPU) and is being started again (PREFLIGHT PF26).
+  phase: "idle" | "loading" | "ready" | "restarting" | "error";
   loaded: number;
   total: number;
   device: "webgpu" | "wasm" | null;
@@ -51,22 +58,35 @@ export type StateMessage = {
   type: "state";
   videoId: string;
   kind: Kind;
+  readUntil: number;
   reading: "preview" | null;
   done: number;
   total: number;
   problem: "no-previews" | "error" | null;
   message: string;
 };
-export type ResultsMessage = { type: "results"; id: number; videoId: string; kind: Kind; hits: Hit[]; weak: boolean };
+export type ResultsMessage = {
+  type: "results";
+  id: number;
+  videoId: string;
+  kind: Kind;
+  readUntil: number;
+  hits: Hit[];
+  weak: boolean;
+  failed: boolean;
+};
 export type FromEngine = ModelMessage | StateMessage | ResultsMessage;
 
 export const MAX_QUERY = 200;
 export const MAX_FRAMES_PER_MESSAGE = 32;
 export const MAX_JPEG_CHARS = 800_000;
+// One frame a second for the longest video allowed.
+export const MAX_READ_FRAMES = MAX_DURATION_S + 1;
 const JPEG_PREFIX = "data:image/jpeg;base64,";
 
 const isId = (v: unknown): v is string => typeof v === "string" && VIDEO_ID.test(v);
 const isTime = (v: unknown): v is number => typeof v === "number" && v >= 0 && v <= MAX_DURATION_S;
+const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= MAX_READ_FRAMES;
 
 // Content scripts are ours, but a compromised page could try to reach the engine through them: check anyway.
 export function parseToEngine(msg: unknown): ToEngine | null {
@@ -92,9 +112,12 @@ export function parseToEngine(msg: unknown): ToEngine | null {
       }
       return { type: "full-frames", videoId: m.videoId, frames };
     }
+    case "full-start":
+      if (m.after !== null && !isTime(m.after)) return null;
+      return { type: "full-start", videoId: m.videoId, after: m.after };
     case "full-end":
-      if (typeof m.complete !== "boolean") return null;
-      return { type: "full-end", videoId: m.videoId, complete: m.complete };
+      if (typeof m.complete !== "boolean" || !isCount(m.sent)) return null;
+      return { type: "full-end", videoId: m.videoId, complete: m.complete, sent: m.sent };
     default:
       return null;
   }
