@@ -22,6 +22,24 @@ export function parsePageMessage(data: unknown): VideoInfo | null {
   return { videoId: i.videoId, duration: i.duration, spec: spec as string | null, live: i.live };
 }
 
+// Content script to page reader: put the player back after it failed during a full-detail read (PREFLIGHT PF32).
+// The page can post this too, so it is checked like a page message; it can only reload the video already loaded.
+export const CONTENT_SOURCE = "moments-content";
+export interface ReloadRequest {
+  videoId: string;
+  at: number;
+  play: boolean;
+}
+
+export function parseReloadMessage(data: unknown): ReloadRequest | null {
+  if (typeof data !== "object" || data === null) return null;
+  const m = data as Record<string, unknown>;
+  if (m.source !== CONTENT_SOURCE || m.type !== "reload") return null;
+  if (typeof m.videoId !== "string" || !VIDEO_ID.test(m.videoId)) return null;
+  if (typeof m.at !== "number" || !(m.at >= 0 && m.at <= MAX_DURATION_S) || typeof m.play !== "boolean") return null;
+  return { videoId: m.videoId, at: m.at, play: m.play };
+}
+
 export interface Hit {
   start: number;
   end: number;

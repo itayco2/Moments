@@ -5,7 +5,7 @@ import { Embedder } from "../../../web/src/embedder";
 import { type FromEngine, parseToEngine, type StateMessage, type ToEngine } from "../protocol";
 import { bestLevel, parseSpec } from "../storyboard";
 import { Drainer, inOrder } from "./drain";
-import { type Entry, Library } from "./library";
+import { type Entry, Library, needsPreviews } from "./library";
 import { ModelHost } from "./model";
 import { type ReadJob, ReadQueue } from "./queue";
 import { failureReplies, knownState, NOTHING } from "./replies";
@@ -58,28 +58,30 @@ const reads = new Drainer(queue, {
 
 async function readJob(job: ReadJob<Port>): Promise<void> {
   const known = await library.get(job.videoId);
-  if (known) {
+  if (known && !needsPreviews(known)) {
     job.ports.forEach((p) => send(p, knownState(job.videoId, known))); // it was read while this job waited
     return;
   }
-  await previewRead(job);
+  await previewRead(job, known);
 }
 
 // Every tab that asked for this video hears about the read, including tabs that joined while it was running.
-async function previewRead(job: ReadJob<Port>): Promise<void> {
+// A partial read already saved keeps its kind in every message: the previews only fill in after it.
+async function previewRead(job: ReadJob<Port>, known: Entry | null): Promise<void> {
   const { videoId, duration, spec } = job;
   const tell = (s: StateMessage) => job.ports.forEach((port) => send(port, s));
+  const progress = (done: number, total: number): StateMessage => ({ ...described(videoId, known), reading: "preview", done, total });
   const sb = parseSpec(spec);
   const level = sb && sb.videoId === videoId ? bestLevel(sb) : null;
   const list = sb && level ? previewTiles(sb, level, duration) : null;
   if (!list) {
-    tell(blank(videoId, { problem: "no-previews" }));
+    tell(known ? described(videoId, known) : blank(videoId, { problem: "no-previews" }));
     return;
   }
   const stamp = library.stamp;
   await model.ensure();
   if (onCpu()) {
-    tell(blank(videoId));
+    tell(described(videoId, known));
     return;
   }
   const times: number[] = [];
@@ -87,7 +89,7 @@ async function previewRead(job: ReadJob<Port>): Promise<void> {
   for await (const batch of readSheets(list, IMAGES_PER_BATCH)) {
     vectors.push(...(await model.use((e) => e.embedImages(batch.images))));
     times.push(...batch.times);
-    tell(blank(videoId, { reading: "preview", done: times.length, total: list.length }));
+    tell(progress(times.length, list.length));
   }
   tell(described(videoId, await library.putPreview(videoId, stamp, times, vectors)));
 }
@@ -98,12 +100,8 @@ async function openVideo(port: Port, m: OpenMessage): Promise<void> {
   // A tab opening a video, or its Try again, retries a model that failed.
   void model.retry().catch(() => undefined);
   const known = await library.open(m.videoId);
-  if (known) {
-    send(port, knownState(m.videoId, known));
-    return;
-  }
-  send(port, blank(m.videoId, { problem: m.spec ? null : "no-previews" }));
-  if (!m.autoRead || !m.spec || onCpu()) return;
+  send(port, known ? knownState(m.videoId, known) : blank(m.videoId, { problem: m.spec ? null : "no-previews" }));
+  if (!needsPreviews(known) || !m.autoRead || !m.spec || onCpu()) return;
   const dropped = queue.add({ videoId: m.videoId, duration: m.duration, spec: m.spec }, port);
   dropped?.ports.forEach((p) => send(p, blank(dropped.videoId, { problem: "error", message: TOO_MANY_WAITING })));
   void reads.drain();

@@ -1,9 +1,11 @@
-// Runs in YouTube's own page (MAIN world) because only there is the player's API reachable. It only reads:
-// video id, length and the preview spec, and posts them to the content script.
-import { PAGE_SOURCE } from "./protocol";
+// Runs in YouTube's own page (MAIN world) because only there is the player's API reachable. It reads video id,
+// length and the preview spec and posts them to the content script; and when the content script asks, it loads the
+// same video again after the player failed during a full-detail read (player-reload.ts).
+import { PAGE_SOURCE, parseReloadMessage } from "./protocol";
+import { type ReloadablePlayer, reloadPlayer } from "./player-reload";
 import { videoInfo } from "./video-info";
 
-type Player = HTMLElement & { getPlayerResponse?: () => unknown };
+type Player = HTMLElement & ReloadablePlayer & { getPlayerResponse?: () => unknown };
 const TRIES = 12;
 const EVERY_MS = 500;
 
@@ -25,3 +27,11 @@ function burst(): void {
 
 document.addEventListener("yt-navigate-finish", burst);
 burst();
+
+window.addEventListener("message", (e) => {
+  if (e.source !== window) return;
+  const request = parseReloadMessage(e.data);
+  if (!request) return;
+  const player = document.getElementById("movie_player") as Player | null;
+  reloadPlayer(player, videoInfo(player?.getPlayerResponse?.())?.videoId ?? null, request);
+});

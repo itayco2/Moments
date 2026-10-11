@@ -28,13 +28,15 @@ export interface ControllerDeps {
   render(s: BarState, elapsedS: number, duration: number): void;
   readSettings(): Promise<Settings>;
   extensionAlive(): boolean; // false once the extension was updated or removed under this page
+  playerFailed(): boolean; // the player lost its source or shows its error (PREFLIGHT PF32)
+  reload(videoId: string, at: number, play: boolean): void; // load the video again at that second (page reader)
   onWatchPage(): boolean;
   now?(): number;
   pollMs?: number;
   seekTimeoutMs?: number;
 }
 
-type Stop = "viewer" | "navigation" | "engine";
+type Stop = "viewer" | "navigation" | "engine" | "player";
 interface Reading {
   videoId: string;
   abort: AbortController;
@@ -64,6 +66,8 @@ export class Controller {
   private viewerStopped: string | null = null; // the video whose read the viewer stopped last
   private reading: Reading | null = null;
   private readonly declined = new Set<string>(); // videos whose read the viewer stopped in this tab (Skip sticks, I1)
+  private readonly playerTrouble = new Set<string>(); // videos whose player failed during a read in this tab
+  private knownFrames = -1; // how many moments the engine last said it holds for this video
   private lostQuery: string | null = null;
   private modelStarted = 0;
 
@@ -81,6 +85,7 @@ export class Controller {
     this.info = next;
     this.searchId++;
     this.lostQuery = null;
+    this.knownFrames = -1;
     this.dispatch({ type: "video", videoId: next.videoId, live: next.live });
     void this.open();
   }
@@ -184,15 +189,16 @@ export class Controller {
   }
 
   private engineState(m: StateMessage): void {
-    const moved = (m.kind === "full" || m.kind === "partial") && (m.kind !== this.state.kind || m.readUntil !== this.state.readUntil);
+    const settled = m.reading === null;
+    const sameRead = m.kind === this.state.kind && m.readUntil === this.state.readUntil;
+    const saved = settled && (m.kind === "full" || m.kind === "partial") && (!sameRead || m.total !== this.knownFrames);
+    if (settled) this.knownFrames = m.total;
     const preview = m.reading === "preview" ? { done: m.done, total: m.total } : null;
     this.dispatch({ type: "engine", kind: m.kind, readUntil: m.readUntil, preview, problem: m.problem, message: m.message });
-    // A full-detail read was saved: the same search again gives sharper answers. After the viewer stopped the read
-    // the player stays where it was put back.
-    if (!moved || !this.state.query || this.reading) return;
-    const quiet = this.viewerStopped === m.videoId;
-    this.viewerStopped = null;
-    void this.ask(this.state.query, quiet, true);
+    // A full-detail read was saved, or previews filled in after one: the same search again gives sharper answers.
+    // The player stays where it is after the viewer stopped the read, and when only previews were added.
+    if (!saved || !this.state.query || this.reading) return;
+    void this.ask(this.state.query, this.viewerStopped === m.videoId || sameRead, true);
   }
 
   // A read starts from a search the viewer made, never from the bar's own repeat of it. It never runs again after the
@@ -202,7 +208,8 @@ export class Controller {
     const info = this.info;
     if (!info || info.live || m.kind === "full" || this.reading || this.navigating || m.id === this.autoSearch) return false;
     if (m.kind === "partial" && m.viewerStopped) return false;
-    return !this.declined.has(info.videoId) && this.state.model.phase !== "error";
+    if (this.declined.has(info.videoId) || this.playerTrouble.has(info.videoId)) return false;
+    return this.state.model.phase !== "error";
   }
 
   private readInFull(after: number | null): void {
@@ -215,7 +222,7 @@ export class Controller {
 
   private async runRead(read: Reading, info: VideoInfo, after: number | null): Promise<void> {
     let started = false;
-    let outcome: ReadOutcome = { complete: false, sent: 0, blank: 0 };
+    let outcome: ReadOutcome = { complete: false, sent: 0, blank: 0, failed: false, saved: { t: 0, playing: false } };
     try {
       const v = await this.waitForPlayer(read.videoId, "read", () => read.abort.signal.aborted);
       if (!v) return;
@@ -243,6 +250,7 @@ export class Controller {
         capture: this.d.capture(v),
         isAd: () => this.d.isAd(),
         isCurrent: () => this.isCurrent(read.videoId, v, src),
+        playerFailed: () => this.d.playerFailed(),
         send: (frames) => void this.d.link.send({ type: "full-frames", videoId: read.videoId, frames }).catch((err: unknown) => console.warn("Moments: frames not sent", err)),
         progress: (done) => this.dispatch({ type: "full", progress: { done: before + done, total } }),
         signal: read.abort.signal,
@@ -266,13 +274,34 @@ export class Controller {
       this.declined.add(read.videoId);
       this.viewerStopped = read.videoId;
     }
+    if (outcome.failed) this.playerFailedDuring(read, outcome.saved);
     if (started) {
       await this.d.link
         .send({ type: "full-end", videoId: read.videoId, complete: outcome.complete, sent: outcome.sent, byViewer: read.why === "viewer" })
         .catch((err: unknown) => console.warn("Moments: end of read not sent", err));
+      if (!outcome.complete && read.why !== "navigation") await this.fillPreviews(read.videoId);
     } else if (read.why === null && this.state.videoId === read.videoId && this.state.hits.length) {
       void this.jump(); // the player never settled: answer from what is known
     }
+  }
+
+  // The player dropped its source or showed its error mid-read (PF32): the read ends as an involuntary partial
+  // (continued on a later visit, not again in this tab) and the video is loaded again at the viewer's second.
+  private playerFailedDuring(read: Reading, saved: { t: number; playing: boolean }): void {
+    read.why ??= "player";
+    this.playerTrouble.add(read.videoId);
+    console.warn("Moments: the player stopped working during the full-detail read; loading the video again");
+    if (this.info?.videoId === read.videoId && !this.navigating) this.d.reload(read.videoId, saved.t, saved.playing);
+  }
+
+  // A read that stopped early covers the video up to readUntil; previews cover the rest, so the whole video can be
+  // searched. With background reading off they were never read: ask for them now (PF32).
+  private async fillPreviews(videoId: string): Promise<void> {
+    const info = this.info;
+    if (!info || info.videoId !== videoId || !info.spec || info.live) return;
+    await this.d.link
+      .send({ type: "open", videoId, duration: info.duration, spec: info.spec, autoRead: true })
+      .catch((err: unknown) => console.warn("Moments: previews not asked for", err));
   }
 
   private isCurrent(videoId: string, v: PlayerVideo, src: string): boolean {

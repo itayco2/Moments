@@ -91,6 +91,12 @@ export function mergeRead(existing: Entry | null, read: FinishedRead, dim: numbe
   return { kind: "partial", readUntil, viewerStopped: read.byViewer, part: mergePartial(combined, rest, dim) };
 }
 
+// Whether a preview read would add anything: nothing saved yet, or a partial read with nothing after readUntil
+// (background reading off, or no previews when it stopped), which would leave the rest of the video unsearchable.
+export function needsPreviews(e: Entry | null): boolean {
+  return e === null || (e.kind === "partial" && !e.times.some((t) => t > e.readUntil));
+}
+
 function entry(kind: SavedKind, readUntil: number, part: Part, dim: number, viewerStopped = false): Entry {
   return { kind, readUntil, viewerStopped: kind === "partial" && viewerStopped, dim, ...part, rows: part.times.map((t) => ({ video: "this", start: t, end: t + 1, thumb: "" })) };
 }

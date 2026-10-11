@@ -21,6 +21,7 @@ export interface FullReadDeps {
   capture(): string | null; // null: this frame has no picture to grab
   isAd(): boolean;
   isCurrent(): boolean; // the player still holds the video being read
+  playerFailed(): boolean; // the player lost its source or shows its error (PREFLIGHT PF32)
   send(frames: Frame[]): void;
   progress(done: number, total: number): void;
   signal: AbortSignal;
@@ -32,6 +33,8 @@ export interface ReadOutcome {
   complete: boolean; // went through every planned time
   sent: number; // frames handed to send()
   blank: number; // frames skipped because the player had no picture
+  failed: boolean; // the player failed: it was not touched afterwards, and the caller loads the video again
+  saved: { t: number; playing: boolean }; // where the viewer was, to put them back
 }
 
 export const BATCH = 8;
@@ -39,6 +42,8 @@ export const JPEG_QUALITY = 0.9;
 const SEEK_TIMEOUT_MS = 5000;
 const AD_POLL_MS = 500;
 const AD_RETRIES_PER_FRAME = 2; // an ad that starts right after a seek: wait it out and seek again, twice at most
+// One seek that never lands is skipped (a slow buffer); this many in a row means the player has stopped working.
+const MAX_MISSED_SEEKS = 2;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function seek(video: Seekable, t: number, timeoutMs: number): Promise<boolean> {
@@ -65,14 +70,16 @@ async function adOver(d: FullReadDeps): Promise<boolean> {
   return !d.signal.aborted && d.isCurrent();
 }
 
-// One frame: "stop" when the read must end, null when the frame is skipped, else the frame.
-async function grab(d: FullReadDeps, t: number): Promise<Frame | "stop" | null> {
+// One frame: "stop" when the read must end, "failed" when the player failed, "missed" when the seek never landed
+// (grabbing then would take the wrong frame), null when there is no picture, else the frame.
+async function grab(d: FullReadDeps, t: number): Promise<Frame | "stop" | "failed" | "missed" | null> {
   for (let tries = 0; tries <= AD_RETRIES_PER_FRAME; tries++) {
     if (!(await adOver(d))) return "stop";
     const landed = await seek(d.video, t, d.seekTimeoutMs ?? SEEK_TIMEOUT_MS);
     if (d.signal.aborted || !d.isCurrent()) return "stop"; // never grab a frame of another video
     if (d.isAd()) continue; // the seek started an ad: that picture is the ad's
-    if (!landed) return null; // a seek that never finishes would grab the wrong frame
+    if (d.playerFailed()) return "failed";
+    if (!landed) return "missed";
     const jpeg = d.capture();
     return jpeg ? { t, jpeg } : null;
   }
@@ -81,22 +88,28 @@ async function grab(d: FullReadDeps, t: number): Promise<Frame | "stop" | null> 
 
 export async function fullRead(d: FullReadDeps): Promise<ReadOutcome> {
   const { video, times } = d;
-  const outcome: ReadOutcome = { complete: false, sent: 0, blank: 0 };
+  const saved = { t: video.currentTime, playing: !video.paused };
+  const outcome: ReadOutcome = { complete: false, sent: 0, blank: 0, failed: false, saved };
   if (d.isAd() || !d.isCurrent()) return outcome; // the caller waits for the ad; this never touches one
   if (times.length === 0) return { ...outcome, complete: !d.signal.aborted }; // a continued read with nothing left
-  const saved = { t: video.currentTime, playing: !video.paused };
   let batch: Frame[] = [];
   const flush = () => {
     if (batch.length) d.send(batch);
     outcome.sent += batch.length;
     batch = [];
   };
+  let missed = 0;
   video.pause();
   try {
     for (const [i, t] of times.entries()) {
       const frame = await grab(d, t);
       if (frame === "stop") return outcome;
-      if (frame) batch.push(frame);
+      missed = frame === "missed" ? missed + 1 : 0;
+      if (frame === "failed" || missed >= MAX_MISSED_SEEKS) {
+        outcome.failed = true;
+        return outcome;
+      }
+      if (frame && frame !== "missed") batch.push(frame);
       else outcome.blank++;
       if (batch.length === BATCH) flush();
       d.progress(i + 1, times.length);
@@ -105,7 +118,7 @@ export async function fullRead(d: FullReadDeps): Promise<ReadOutcome> {
     return outcome;
   } finally {
     flush(); // every frame in the batch was grabbed while the video was current
-    if (!d.isAd() && d.isCurrent()) {
+    if (!outcome.failed && !d.isAd() && d.isCurrent()) {
       video.currentTime = saved.t;
       if (saved.playing) void video.play().catch(() => undefined);
     }

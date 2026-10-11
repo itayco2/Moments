@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bestLevel, parseSpec, sheetUrl, tiles } from "../src/storyboard";
 import long from "./fixtures/spec_long.json";
 import lowres from "./fixtures/spec_lowres.json";
+import level159 from "./fixtures/spec_159.json";
 import short from "./fixtures/spec_short.json";
 
 describe("parseSpec", () => {
@@ -27,6 +28,17 @@ describe("parseSpec", () => {
 describe("bestLevel", () => {
   it("picks 320x180 when the video has it", () => {
     expect(bestLevel(parseSpec(long.spec)!)).toMatchObject({ index: 3, width: 320, intervalMs: 10000 });
+  });
+
+  it("uses a 159x90 level, the 160x90 class as YouTube sizes it for some videos (PF31)", () => {
+    const sb = parseSpec(level159.spec)!;
+    expect(bestLevel(sb)).toMatchObject({ index: 2, width: 159, height: 90, cols: 5, rows: 5, intervalMs: 2000 });
+    expect(tiles(sb, bestLevel(sb)!, level159.lengthSeconds)).toHaveLength(109);
+  });
+
+  it("still refuses the levels below the 160x90 class", () => {
+    const sb = parseSpec(level159.spec)!;
+    expect(bestLevel({ ...sb, levels: sb.levels.slice(0, 2) })).toBeNull(); // 48x27 and 79x45 only
   });
 
   it("falls back to 160x90 for older uploads", () => {

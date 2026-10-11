@@ -7,10 +7,12 @@ test("the bar appears under the player, reads previews, finds a moment and marks
   const setup = await context.newPage();
   await setup.goto(`chrome-extension://${extensionId}/popup.html`);
   expect(await setup.evaluate(() => chrome.runtime.sendMessage({ type: "forget-all" }))).toEqual({ ok: true });
+  await setup.evaluate(() => chrome.storage.local.set({ backgroundReading: true })); // the default is off (EVAL.md)
   await setup.close();
   const page = await context.newPage();
   await page.goto("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   const host = page.locator("moments-bar");
+  expect(await page.evaluate(() => navigator.webdriver)).toBe(false); // YouTube sees an ordinary browser (helpers.ts)
   await expect(host).toHaveAttribute("data-place", "below", { timeout: 30_000 });
   await expect(host).toHaveAttribute("data-kind", "preview", { timeout: 180_000 });
   const input = host.locator("input");

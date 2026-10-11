@@ -29,7 +29,9 @@ export interface Tile {
 }
 
 const BASE = /^https:\/\/i\.ytimg\.com\/sb\/([A-Za-z0-9_-]{11})\/storyboard3_L\$L\/\$N\.jpg\?/;
-const MIN_WIDTH = 160; // smaller previews (48x27, 80x45) carry too little to search
+// The 160x90 class is the smallest worth searching; YouTube sizes it 159x90 for some videos (PREFLIGHT PF31).
+// The next level down (79x45, 80x45, 48x27) carries too little to search.
+const MIN_WIDTH = 150;
 // A level name and signature go into sheet URLs: letters, digits, _, $ and - only, as in every spec seen.
 const TOKEN = /^[\w$-]+$/;
 

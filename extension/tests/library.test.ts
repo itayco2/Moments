@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DIM, type Entry, fromSaved, Library, MAX_IN_MEMORY, mergePartial, mergeRead, type Part } from "../src/engine/library";
+import { DIM, type Entry, fromSaved, Library, MAX_IN_MEMORY, mergePartial, mergeRead, needsPreviews, type Part } from "../src/engine/library";
 import { loadVideo, saveVideo, touchVideo } from "../src/engine/store";
 
 // No IndexedDB in node: the store is replaced, so these tests see exactly what the library asks it to do.
@@ -308,5 +308,20 @@ describe("Library full-detail reads", () => {
     expect(loadVideo).not.toHaveBeenCalled();
     await library.get(id(0));
     expect(loadVideo).toHaveBeenCalledExactlyOnceWith(id(0));
+  });
+});
+
+describe("needsPreviews (PF32: search covers the whole video)", () => {
+  const e = (kind: Entry["kind"], times: number[], readUntil: number): Entry => ({ kind, readUntil, viewerStopped: false, dim: 1, rows: [], ...part(times, 1) });
+
+  it("asks for previews for a video with nothing saved, and for a partial read with nothing after it", () => {
+    expect(needsPreviews(null)).toBe(true);
+    expect(needsPreviews(e("partial", [0, 1, 2, 58], 58))).toBe(true);
+  });
+
+  it("does not for a partial read with previews after it, a preview read or a full read", () => {
+    expect(needsPreviews(e("partial", [0, 1, 58, 60, 70], 58))).toBe(false);
+    expect(needsPreviews(e("preview", [0, 2, 4], 0))).toBe(false);
+    expect(needsPreviews(e("full", [0, 1, 2], 2))).toBe(false);
   });
 });

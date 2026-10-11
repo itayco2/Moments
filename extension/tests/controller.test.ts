@@ -44,7 +44,8 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 
 function setup(over: Partial<ControllerDeps> = {}) {
   const sent: ToEngine[] = [];
-  const page = { video: new FakeVideo(40.3), ad: false, alive: true, watch: true };
+  const page = { video: new FakeVideo(40.3), ad: false, alive: true, watch: true, failed: false };
+  const reload = vi.fn();
   const link = { send: vi.fn(async (m: ToEngine) => void sent.push(m)), reconnect: vi.fn(), resetRetries: vi.fn() };
   const c = new Controller({
     link,
@@ -54,6 +55,8 @@ function setup(over: Partial<ControllerDeps> = {}) {
     render: () => undefined,
     readSettings: async () => ({ backgroundReading: true }),
     extensionAlive: () => page.alive,
+    playerFailed: () => page.failed,
+    reload,
     onWatchPage: () => page.watch,
     now: () => 0,
     pollMs: 1,
@@ -68,7 +71,7 @@ function setup(over: Partial<ControllerDeps> = {}) {
   };
   const frameTimesSent = () => of("full-frames").flatMap((m) => m.frames.map((f: Frame) => f.t));
   const ended = () => vi.waitFor(() => expect(of("full-end")).not.toHaveLength(0));
-  return { c, sent, page, link, of, answer, frameTimesSent, ended };
+  return { c, sent, page, link, reload, of, answer, frameTimesSent, ended };
 }
 
 async function startOn(t: ReturnType<typeof setup>, info = INFO) {
@@ -421,5 +424,74 @@ describe("Controller: why a read stopped decides whether it is continued (I1)", 
     t.answer("preview");
     await t.ended();
     expect(t.of("full-end")[0]).toMatchObject({ complete: false, byViewer: false });
+  });
+});
+
+const WITH_PREVIEWS: VideoInfo = { ...INFO, spec: "https://i.ytimg.com/sb/dQw4w9WgXcQ/storyboard3_L$L/$N.jpg?x" };
+
+describe("Controller: the player fails during a read (PF32)", () => {
+  it("ends the read as partial not stopped by the viewer, loads the video again at the viewer's second and asks for previews", async () => {
+    const t = setup();
+    t.page.video.onSeek = (s) => {
+      if (s === 10) t.page.failed = true;
+    };
+    await startOn(t, WITH_PREVIEWS);
+    t.answer("preview");
+    await t.ended();
+    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: false, sent: 10, byViewer: false }]);
+    expect(t.reload).toHaveBeenCalledExactlyOnceWith(INFO.videoId, 30, true);
+    expect(t.page.video.seeks.at(-1)).toBe(10);
+    await vi.waitFor(() => expect(t.of("open")).toHaveLength(2));
+    expect(t.of("open")[1]).toMatchObject({ autoRead: true });
+  });
+
+  it("does not try the read again in this tab", async () => {
+    const t = setup();
+    t.page.video.onSeek = (s) => {
+      if (s === 10) t.page.failed = true;
+    };
+    await startOn(t);
+    t.answer("preview");
+    await t.ended();
+    t.page.failed = false;
+    await t.c.search("again");
+    t.answer("partial", { readUntil: 9 });
+    await settle();
+    expect(t.of("full-start")).toHaveLength(1);
+  });
+});
+
+describe("Controller: previews cover what a stopped read did not reach (PF32)", () => {
+  it("asks for previews after the viewer stops a read", async () => {
+    const t = setup();
+    t.page.video.onSeek = (s) => s === 5 && t.c.skip();
+    await startOn(t, WITH_PREVIEWS);
+    t.answer("preview");
+    await t.ended();
+    await vi.waitFor(() => expect(t.of("open")).toHaveLength(2));
+    expect(t.of("open")[1]).toMatchObject({ videoId: INFO.videoId, autoRead: true });
+  });
+
+  it("does not ask for previews again after a read that went to the end", async () => {
+    const t = setup();
+    await startOn(t, WITH_PREVIEWS);
+    t.answer("preview");
+    await t.ended();
+    await settle();
+    expect(t.of("open")).toHaveLength(1);
+  });
+
+  it("searches again when previews fill in after a partial read, without moving the player", async () => {
+    const t = setup();
+    await startOn(t);
+    t.answer("partial", { readUntil: 30, viewerStopped: true, hits: [] });
+    const state = (total: number) => ({ type: "state" as const, videoId: INFO.videoId, kind: "partial" as const, readUntil: 30, viewerStopped: true, reading: null, done: total, total, problem: null, message: "" });
+    t.c.message(state(31));
+    const searches = t.of("search").length;
+    t.c.message(state(36)); // the previews after 0:30 arrived
+    expect(t.of("search")).toHaveLength(searches + 1);
+    t.answer("partial", { readUntil: 30, viewerStopped: true });
+    await settle();
+    expect(t.page.video.seeks).toEqual([]);
   });
 });

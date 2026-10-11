@@ -11,7 +11,16 @@ export async function launchExtension(extraArgs: string[] = []): Promise<{ conte
     channel: "chromium",
     headless: true,
     viewport: { width: 1280, height: 800 },
-    args: [`--disable-extensions-except=${DIST}`, `--load-extension=${DIST}`, "--autoplay-policy=no-user-gesture-required", ...extraArgs],
+    // Without these YouTube treats the browser as a bot: after about a minute of a video its media requests are
+    // refused (403) and the player drops its source (PREFLIGHT PF32). A viewer's Chrome never has them.
+    ignoreDefaultArgs: ["--enable-automation"],
+    args: [
+      `--disable-extensions-except=${DIST}`,
+      `--load-extension=${DIST}`,
+      "--autoplay-policy=no-user-gesture-required",
+      "--disable-blink-features=AutomationControlled",
+      ...extraArgs,
+    ],
   });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   return { context, extensionId: new URL(worker.url()).host };

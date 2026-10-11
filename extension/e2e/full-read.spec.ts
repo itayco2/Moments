@@ -6,6 +6,7 @@ test("the first search reads the video in full detail and puts the player back",
   const setup = await context.newPage();
   await setup.goto(`chrome-extension://${extensionId}/popup.html`);
   await setup.evaluate(() => chrome.runtime.sendMessage({ type: "forget-all" }));
+  await setup.evaluate(() => chrome.storage.local.set({ backgroundReading: true })); // the default is off (EVAL.md)
   const page = await context.newPage();
   await page.goto("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   const host = page.locator("moments-bar");

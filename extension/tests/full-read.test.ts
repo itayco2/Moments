@@ -10,6 +10,7 @@ class FakeVideo extends EventTarget {
   stuckAt: number | null = null;
   ad = false;
   current = true;
+  failed = false;
   seeks: { t: number; duringAd: boolean }[] = [];
   plays = 0;
   pauses = 0;
@@ -45,6 +46,7 @@ function run(video: FakeVideo, over: Partial<FullReadDeps> = {}) {
     capture: () => `data:image/jpeg;base64,${video.currentTime}`,
     isAd: () => video.ad,
     isCurrent: () => video.current,
+    playerFailed: () => video.failed,
     send: (frames) => sent.push(frames),
     progress: (n) => done.push(n),
     signal: controller.signal,
@@ -59,7 +61,7 @@ describe("fullRead", () => {
   it("reads every frame in order, in batches of 8, then puts the viewer back", async () => {
     const video = new FakeVideo();
     const { promise, sent } = run(video);
-    expect(await promise).toEqual({ complete: true, sent: 20, blank: 0 });
+    expect(await promise).toMatchObject({ complete: true, sent: 20, blank: 0 });
     expect(sent.map((b) => b.length)).toEqual([8, 8, 4]);
     expect(sent.flat().map((f) => f.t)).toEqual(times);
     expect(video.currentTime).toBe(30);
@@ -76,12 +78,13 @@ describe("fullRead", () => {
       capture: () => "data:image/jpeg;base64,x",
       isAd: () => false,
       isCurrent: () => true,
+      playerFailed: () => false,
       send: (f) => sent.push(f),
       progress: (n) => n === 5 && controller.abort(),
       signal: controller.signal,
       seekTimeoutMs: 5,
     });
-    expect(outcome).toEqual({ complete: false, sent: 5, blank: 0 });
+    expect(outcome).toMatchObject({ complete: false, sent: 5, blank: 0 });
     expect(sent.flat()).toHaveLength(5);
     expect(video.currentTime).toBe(30);
     expect(video.paused).toBe(false);
@@ -105,7 +108,7 @@ describe("fullRead", () => {
 
   it("leaves the player alone when nothing is left to read (a partial read that had reached the end)", async () => {
     const video = new FakeVideo();
-    expect(await run(video, { times: [] }).promise).toEqual({ complete: true, sent: 0, blank: 0 });
+    expect(await run(video, { times: [] }).promise).toMatchObject({ complete: true, sent: 0, blank: 0 });
     expect(video.pauses).toBe(0);
     expect(video.seeks).toEqual([]);
   });
@@ -113,7 +116,7 @@ describe("fullRead", () => {
   it("skips frames with no picture and counts them", async () => {
     const video = new FakeVideo();
     const { promise, sent } = run(video, { capture: () => (video.currentTime < 10 ? null : "data:image/jpeg;base64,x") });
-    expect(await promise).toEqual({ complete: true, sent: 15, blank: 5 });
+    expect(await promise).toMatchObject({ complete: true, sent: 15, blank: 5 });
     expect(sent.flat()[0].t).toBe(10);
   });
 
@@ -125,7 +128,7 @@ describe("fullRead", () => {
       };
       const { promise, sent } = run(video);
 
-      expect(await promise).toEqual({ complete: false, sent: 5, blank: 0 });
+      expect(await promise).toMatchObject({ complete: false, sent: 5, blank: 0 });
       expect(sent.flat().map((f) => f.t)).toEqual([0, 2, 4, 6, 8]);
       expect(video.seeks.map((s) => s.t)).toEqual([0, 2, 4, 6, 8, 10]); // no seek back to 0:30
       expect(video.plays).toBe(0);
@@ -134,9 +137,33 @@ describe("fullRead", () => {
     it("does not start on a player that no longer holds the video", async () => {
       const video = new FakeVideo();
       video.current = false;
-      expect(await run(video).promise).toEqual({ complete: false, sent: 0, blank: 0 });
+      expect(await run(video).promise).toMatchObject({ complete: false, sent: 0, blank: 0 });
       expect(video.pauses).toBe(0);
       expect(video.seeks).toEqual([]);
+    });
+  });
+
+  describe("when the player itself fails mid-read (PF32)", () => {
+    it("ends the read as failed when the player drops its source, keeps the frames and never touches the player again", async () => {
+      const video = new FakeVideo();
+      video.onSeek = (t) => {
+        if (t === 10) video.failed = true; // YouTube dropped the source: no length, "Something went wrong"
+      };
+      const { promise, sent } = run(video);
+      expect(await promise).toEqual({ complete: false, sent: 5, blank: 0, failed: true, saved: { t: 30, playing: true } });
+      expect(sent.flat().map((f) => f.t)).toEqual([0, 2, 4, 6, 8]);
+      expect(video.seeks.at(-1)?.t).toBe(10); // no seek back on a dead player: the caller loads the video again
+      expect(video.plays).toBe(0);
+    });
+
+    it("takes two seeks in a row that never land as a failed player, while one is only skipped", async () => {
+      const video = new FakeVideo();
+      video.onSeek = (t) => {
+        if (t >= 10) video.stuckAt = t;
+      };
+      const { promise, sent } = run(video);
+      expect(await promise).toMatchObject({ complete: false, sent: 5, blank: 1, failed: true });
+      expect(sent.flat().map((f) => f.t)).toEqual([0, 2, 4, 6, 8]);
     });
   });
 
@@ -144,7 +171,7 @@ describe("fullRead", () => {
     it("never pauses, seeks or restores an ad: a read asked for during one does nothing", async () => {
       const video = new FakeVideo();
       video.ad = true;
-      expect(await run(video).promise).toEqual({ complete: false, sent: 0, blank: 0 });
+      expect(await run(video).promise).toMatchObject({ complete: false, sent: 0, blank: 0 });
       expect(video.pauses).toBe(0);
       expect(video.seeks).toEqual([]);
       expect(video.plays).toBe(0);

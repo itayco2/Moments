@@ -1,6 +1,6 @@
 // Ties the page reader, the engine and the bar together on YouTube. The decisions live in controller.ts; this file
 // only connects it to the page.
-import { parsePageMessage } from "../protocol";
+import { CONTENT_SOURCE, parsePageMessage } from "../protocol";
 import { readSettings } from "../settings";
 import { Bar } from "./bar";
 import { statusLine } from "./bar-state";
@@ -38,6 +38,14 @@ const controller = new Controller({
   },
   readSettings,
   extensionAlive: () => Boolean(chrome.runtime?.id),
+  // The source gone (no length) or YouTube's own error on the player.
+  playerFailed: () => {
+    const v = video();
+    const error = player()?.querySelector<HTMLElement>(".ytp-error");
+    return !v || !(v.duration > 0) || (!!error && error.offsetParent !== null);
+  },
+  // Only the page can call the player's API: the page reader loads the video again (player-reload.ts).
+  reload: (videoId, at, play) => window.postMessage({ source: CONTENT_SOURCE, type: "reload", videoId, at, play }, location.origin),
   onWatchPage: () => location.pathname === "/watch",
 });
 
