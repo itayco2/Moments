@@ -1,4 +1,6 @@
 import { chromium, type BrowserContext } from "@playwright/test";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DIST = fileURLToPath(new URL("../dist", import.meta.url));
@@ -6,7 +8,15 @@ const DIST = fileURLToPath(new URL("../dist", import.meta.url));
 // (an empty one is a cold start, which must still load the model from the website).
 const PROFILE = process.env.MOMENTS_PROFILE ?? fileURLToPath(new URL("../.pw-profile", import.meta.url));
 
+// Chrome keeps an unpacked extension's old service worker script across a rebuild. Clearing its script cache and
+// registrations makes the next launch run the new build. CacheStorage, next to them, holds the downloaded model:
+// deleting the whole "Service Worker" folder made every launch download it again (PREFLIGHT PF34).
+export function freshServiceWorker(profile: string): void {
+  for (const part of ["ScriptCache", "Database"]) rmSync(join(profile, "Default", "Service Worker", part), { recursive: true, force: true });
+}
+
 export async function launchExtension(extraArgs: string[] = []): Promise<{ context: BrowserContext; extensionId: string }> {
+  freshServiceWorker(PROFILE);
   const context = await chromium.launchPersistentContext(PROFILE, {
     channel: "chromium",
     headless: true,
