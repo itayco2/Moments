@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { modelFetch, sizeFor, withKnownLength } from "../src/fetch-length";
+import { ABANDONED_MESSAGE, modelFetch, sizeFor, withKnownLength } from "../src/fetch-length";
 
 const FILES = [
   { path: "config.json", size: 5031 },
@@ -112,6 +112,44 @@ describe("modelFetch closes answers nobody reads (PF25)", () => {
     await fetchModel(URL_DATA);
     await fetchModel(URL_OTHER);
     expect(cancelled).toEqual([false, false]);
+  });
+
+  it("fails loudly when a cancelled answer is read after all, instead of ending as an empty, finished file", async () => {
+    // A cancelled stream reads as {done: true}; transformers.js would take that for a complete file, fill it
+    // with zeros and keep it in its cache for good, with no error.
+    async function droppedAnswer() {
+      const { cancelled, fetchModel } = setup();
+      const dropped = await fetchModel(URL_DATA);
+      await fetchModel(URL_DATA);
+      expect(cancelled).toEqual([true, false]);
+      return dropped;
+    }
+    const message = "Moments: a model download was cancelled before it was read";
+    expect(ABANDONED_MESSAGE).toBe(message);
+    await expect((await droppedAnswer()).body!.getReader().read()).rejects.toThrow(message);
+    await expect((await droppedAnswer()).arrayBuffer()).rejects.toThrow(message);
+  });
+
+  it("hands on every byte of an answer that is read, and reads nothing from the network before that", async () => {
+    let pulls = 0;
+    const chunks = [new Uint8Array([1, 2]), new Uint8Array([3])];
+    const network = new ReadableStream<Uint8Array>(
+      { pull: (c) => (pulls < chunks.length ? c.enqueue(chunks[pulls++]) : c.close()) },
+      { highWaterMark: 0 },
+    );
+    const fetchModel = modelFetch(async () => new Response(network, { status: 200 }), FILES2);
+    const res = await fetchModel(URL_DATA);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(pulls).toBe(0);
+    expect(Array.from(new Uint8Array(await res.arrayBuffer()))).toEqual([1, 2, 3]);
+  });
+
+  it("passes an answer without a body through", async () => {
+    const fetchModel = modelFetch(async () => new Response(null, { status: 204 }), FILES2);
+    const res = await fetchModel(URL_DATA);
+    await fetchModel(URL_DATA);
+    expect(res.status).toBe(204);
+    expect(res.body).toBeNull();
   });
 });
 

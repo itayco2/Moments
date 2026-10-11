@@ -47,10 +47,37 @@ async function fromMirror(plain: Fetch, url: string, init: RequestInit): Promise
   }
 }
 
-// Stops the download of an answer whose body nobody has started reading. transformers.js starts reading an answer
-// it means to use as soon as it gets it, so one still unread when its file is asked for again was dropped.
-function closeIfUnread(res: Response | undefined): void {
-  if (res?.body && !res.bodyUsed && !res.body.locked) void res.body.cancel().catch(() => undefined);
+export const ABANDONED_MESSAGE = "Moments: a model download was cancelled before it was read";
+
+// An answer whose network download can be stopped while nobody has started reading it, and that then fails when
+// someone does read it. A plainly cancelled body would read as empty and finished, and transformers.js would
+// keep the zero-filled file in its cache for good with no error.
+function abandonable(res: Response): { answer: Response; abandonIfUnread: () => void } {
+  const network = res.body?.getReader();
+  if (!network) return { answer: res, abandonIfUnread: () => undefined };
+  let stream: ReadableStreamDefaultController<Uint8Array> | undefined;
+  // highWaterMark 0: nothing is read from the network until the answer itself is read.
+  const body = new ReadableStream<Uint8Array>(
+    {
+      start: (controller) => {
+        stream = controller;
+      },
+      pull: async (controller) => {
+        const { done, value } = await network.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      },
+      cancel: (reason) => network.cancel(reason),
+    },
+    { highWaterMark: 0 },
+  );
+  const answer = new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+  const abandonIfUnread = () => {
+    if (answer.bodyUsed || body.locked) return;
+    void network.cancel().catch(() => undefined);
+    stream?.error(new Error(ABANDONED_MESSAGE));
+  };
+  return { answer, abandonIfUnread };
 }
 
 // transformers.js keeps its own copy of each model file (the Cache API), so the browser's HTTP cache is skipped
@@ -58,22 +85,24 @@ function closeIfUnread(res: Response | undefined): void {
 // download and crashed the tab (PREFLIGHT PF24). Every other request goes through untouched.
 // The website's copy answers first, so a network that blocks Hugging Face still loads and Hugging Face sees
 // nothing unless the copy fails.
-// transformers.js asks for each file twice when given a progress callback: first only for its size, reading
-// the headers of a full download and never closing it, then for the bytes. Over HTTP/2 every request shares
-// one connection, and the two unread 200 MB answers stalled it: every download stopped at about 130 of 402 MB
-// (PREFLIGHT PF25). So the earlier answer for a file is closed when the file is asked for again.
+// A safety net for a stall seen live (PREFLIGHT PF25). Given a relative model path, transformers.js checked each
+// file's size with a full download whose headers it read and whose body it never closed, so each file was
+// downloaded twice. Over HTTP/2 every request shares one connection, and the two unread 200 MB answers stalled
+// it: every download stopped at about 130 of 402 MB. The worker now gives it a full address, which makes the
+// size check a 1-byte Range request. Should an earlier answer for a file ever still be unread when the file is
+// asked for again, it is dropped here: its download stops, and reading it later fails loudly (see abandonable).
 export function modelFetch(plain: Fetch, files: ModelFile[], mirror?: Mirror): Fetch {
-  const lastAnswer = new Map<string, Response>();
+  const abandonLast = new Map<string, () => void>();
   return async (input, init) => {
     const url = String(input);
     const size = sizeFor(url, files);
     if (size === undefined) return plain(input, init);
-    closeIfUnread(lastAnswer.get(url));
+    abandonLast.get(url)?.();
     const options = { ...init, cache: "no-store" as const };
     const mirrored = mirror && mirrorUrl(url, mirror);
     const res = (mirrored && (await fromMirror(plain, mirrored, options))) || (await plain(input, options));
-    const answer = withKnownLength(res, size);
-    lastAnswer.set(url, answer);
+    const { answer, abandonIfUnread } = abandonable(withKnownLength(res, size));
+    abandonLast.set(url, abandonIfUnread);
     return answer;
   };
 }

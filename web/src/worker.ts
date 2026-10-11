@@ -17,17 +17,19 @@ import {
 import { modelFetch } from "./fetch-length";
 import type { Request, Response } from "./protocol";
 
+// MODEL_BASE can be relative (the website's own path); everything below needs the full address.
+const MODEL_URL = MODEL_BASE ? new URL(MODEL_BASE, self.location.href).href : null;
 // The model comes from MODEL_BASE when set (the site's or the website's copy); a file missing there falls back to Hugging Face at the same revision. The runtime comes from ORT_BASE when set.
-if (MODEL_BASE) {
+// The path must be a full address: given a relative one, transformers.js checks each file's size with a full
+// download of it (and never reads it), given a full one with a 1-byte Range request (PREFLIGHT PF25).
+if (MODEL_URL) {
   env.allowLocalModels = true;
-  env.localModelPath = MODEL_BASE;
+  env.localModelPath = MODEL_URL;
 }
 if (ORT_BASE && env.backends.onnx.wasm) env.backends.onnx.wasm.wasmPaths = new URL(ORT_BASE, self.location.href).href;
 const PINNED = { revision: MODEL_REVISION };
-// With a model copy of our own, Hugging Face URLs of the files we host are answered from it first (MODEL_BASE can be relative).
-const MIRROR = MODEL_BASE
-  ? { from: `https://huggingface.co/${MODEL_ID}/resolve/`, to: `${new URL(MODEL_BASE, self.location.href).href}${MODEL_ID}/` }
-  : undefined;
+// With a model copy of our own, Hugging Face URLs of the files we host are answered from it first.
+const MIRROR = MODEL_URL ? { from: `https://huggingface.co/${MODEL_ID}/resolve/`, to: `${MODEL_URL}${MODEL_ID}/` } : undefined;
 env.fetch = modelFetch(env.fetch, MODEL_FILES, MIRROR);
 
 type Device = "webgpu" | "wasm";
