@@ -1,5 +1,5 @@
 // Three builds into dist/, then the static files.
-import { cp, mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 
@@ -31,6 +31,10 @@ await build({
     },
   },
 });
+
+// Vite emits a second copy of the ONNX runtime from transformers.js's `new URL(...wasm)`; the worker loads /ort/ instead.
+const assets = new URL("./dist/assets/", import.meta.url);
+for (const f of (await readdir(assets)).filter((n) => n.endsWith(".wasm"))) await rm(new URL(f, assets));
 
 // 2 and 3. Content scripts must be classic scripts: one self-contained IIFE each.
 for (const [name, entry] of [["content", "src/content/main.ts"], ["page-reader", "src/page-reader.ts"]]) {

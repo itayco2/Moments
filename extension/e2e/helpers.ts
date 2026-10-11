@@ -2,8 +2,9 @@ import { chromium, type BrowserContext } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 
 const DIST = fileURLToPath(new URL("../dist", import.meta.url));
-// A fixed profile keeps the 402 MB model cached between test runs.
-const PROFILE = fileURLToPath(new URL("../.pw-profile", import.meta.url));
+// A fixed profile keeps the 402 MB model cached between test runs. MOMENTS_PROFILE points a run at another folder
+// (an empty one is a cold start, which must still load the model from the website).
+const PROFILE = process.env.MOMENTS_PROFILE ?? fileURLToPath(new URL("../.pw-profile", import.meta.url));
 
 export async function launchExtension(extraArgs: string[] = []): Promise<{ context: BrowserContext; extensionId: string }> {
   const context = await chromium.launchPersistentContext(PROFILE, {
@@ -16,5 +17,6 @@ export async function launchExtension(extraArgs: string[] = []): Promise<{ conte
   return { context, extensionId: new URL(worker.url()).host };
 }
 
-// Any request to the runtime's CDN fails to resolve: the model can only load if the runtime is bundled.
-export const NO_CDN = ["--host-resolver-rules=MAP cdn.jsdelivr.net 0.0.0.0"];
+// The runtime can only come from the bundle and the weights only from the website's copy:
+// the runtime's CDN and Hugging Face both fail to resolve.
+export const ONLY_BUNDLE_AND_WEBSITE = ["--host-resolver-rules=MAP cdn.jsdelivr.net 0.0.0.0, MAP huggingface.co 0.0.0.0, MAP *.hf.co 0.0.0.0"];

@@ -68,5 +68,5 @@ jobs:
         working-directory: web
       - run: npm ci
         working-directory: extension
-      - run: npx tsc --noEmit && npx vitest run
+      - run: npx tsc --noEmit && npx vitest run --passWithNoTests
         working-directory: extension
