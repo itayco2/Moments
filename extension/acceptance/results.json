@@ -1,13 +1,13 @@
 {
  "summary": {
   "n": 15,
-  "top5Full": 12,
-  "firstFull": 12,
-  "top5Preview": 10,
-  "firstPreview": 10,
-  "searchesWithoutPreviewRead": 5,
+  "top5Full": 15,
+  "firstFull": 13,
+  "top5Preview": 15,
+  "firstPreview": 13,
+  "searchesWithoutPreviewRead": 0,
   "droppedQuiet": 0,
-  "droppedWhileReading": 0.022457067371202115,
+  "droppedWhileReading": 0.032388663967611336,
   "droppedQuietAfter": 0
  },
  "stutter": {
@@ -31,13 +31,13 @@
    ]
   },
   "busy": {
-   "share": 0.022457067371202115,
+   "share": 0.032388663967611336,
    "slices": [
-    0.024,
-    0.031496062992125984,
-    0.024193548387096774,
-    0.038461538461538464,
-    0.016,
+    0.10101010101010101,
+    0.10218978102189781,
+    0,
+    0,
+    0,
     0
    ],
    "sliceEndedInAd": [
@@ -68,11 +68,11 @@
     false
    ]
   },
-  "readEndedAtS": 27.351,
-  "otherStatusAtEnd": "Quick results from preview frames. Your first search reads the video in full detail, once.",
-  "gpuBeforeQuiet": "gpu util,mem: 36 %, 4675 MiB; compute apps: 29188, C:\\Windows\\explorer.exe, [N/A]\r\n4996, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]\r\n16324, C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2607.23.0_x64__8wekyb3d8bbwe\\SnippingTool\\SnippingTool.exe, [N/A]\r\n30020, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]\r\n25536, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]\r\n6628, C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe, [N/A]\r\n31864, C:\\Program Files\\WindowsApps\\Claude_2.31226.1.0_x64__pzs8sxrjxfjjc\\app\\claude.exe, [N/A]\r\n1040, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n33816, C:\\Program Files\\NVIDIA Corporation\\NvContainer\\nvcontainer.exe, [N/A]\r\n17492, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n39060, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.62\\msedgewebview2.exe, [N/A]\r\n27392, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]\r\n9820, C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe, [N/A]\r\n21484, C:\\Users\\itay7\\AppData\\Local\\Discord\\app-1.0.9261\\Discord.exe, [N/A]\r\n23320, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]",
-  "gpuWhileReading": "gpu util,mem: 100 %, 6304 MiB; compute apps: 29188, C:\\Windows\\explorer.exe, [N/A]\r\n4996, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]\r\n16324, C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2607.23.0_x64__8wekyb3d8bbwe\\SnippingTool\\SnippingTool.exe, [N/A]\r\n30020, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]\r\n25536, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]\r\n6628, C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe, [N/A]\r\n31864, C:\\Program Files\\WindowsApps\\Claude_2.31226.1.0_x64__pzs8sxrjxfjjc\\app\\claude.exe, [N/A]\r\n1040, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n33816, C:\\Program Files\\NVIDIA Corporation\\NvContainer\\nvcontainer.exe, [N/A]\r\n17492, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n39060, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.62\\msedgewebview2.exe, [N/A]\r\n27392, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]\r\n9820, C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe, [N/A]\r\n21484, C:\\Users\\itay7\\AppData\\Local\\Discord\\app-1.0.9261\\Discord.exe, [N/A]\r\n23320, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]",
-  "gpuAfterBusy": "gpu util,mem: 30 %, 4844 MiB; compute apps: 29188, C:\\Windows\\explorer.exe, [N/A]\r\n4996, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]\r\n16324, C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2607.23.0_x64__8wekyb3d8bbwe\\SnippingTool\\SnippingTool.exe, [N/A]\r\n30020, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]\r\n25536, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]\r\n6628, C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe, [N/A]\r\n31864, C:\\Program Files\\WindowsApps\\Claude_2.31226.1.0_x64__pzs8sxrjxfjjc\\app\\claude.exe, [N/A]\r\n1040, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n33816, C:\\Program Files\\NVIDIA Corporation\\NvContainer\\nvcontainer.exe, [N/A]\r\n17492, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n39060, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.62\\msedgewebview2.exe, [N/A]\r\n27392, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]\r\n9820, C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe, [N/A]\r\n21484, C:\\Users\\itay7\\AppData\\Local\\Discord\\app-1.0.9261\\Discord.exe, [N/A]\r\n23320, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]"
+  "readEndedAtS": null,
+  "otherStatusAtEnd": "The AI model stopped (the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n - While handling unexpected error type Internal when allowed errors are Validation.\n    at C...) and is restarting. This can take a minute.",
+  "gpuBeforeQuiet": "gpu util,mem: 27 %, 5696 MiB; compute apps: 29188, C:\\Windows\\explorer.exe, [N/A]\r\n4996, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]\r\n16324, C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2607.23.0_x64__8wekyb3d8bbwe\\SnippingTool\\SnippingTool.exe, [N/A]\r\n30020, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]\r\n25536, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]\r\n6628, C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe, [N/A]\r\n31864, C:\\Program Files\\WindowsApps\\Claude_2.31226.1.0_x64__pzs8sxrjxfjjc\\app\\claude.exe, [N/A]\r\n1040, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n33816, C:\\Program Files\\NVIDIA Corporation\\NvContainer\\nvcontainer.exe, [N/A]\r\n17492, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n39060, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.62\\msedgewebview2.exe, [N/A]\r\n27392, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]\r\n9820, C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe, [N/A]\r\n21484, C:\\Users\\itay7\\AppData\\Local\\Discord\\app-1.0.9261\\Discord.exe, [N/A]\r\n35528, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]\r\n4520, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]\r\n35904, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]",
+  "gpuWhileReading": "gpu util,mem: 34 %, 1548 MiB; compute apps: 29188, C:\\Windows\\explorer.exe, [N/A]\r\n4996, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]\r\n16324, C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2607.23.0_x64__8wekyb3d8bbwe\\SnippingTool\\SnippingTool.exe, [N/A]\r\n30020, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]\r\n25536, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]\r\n6628, C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe, [N/A]\r\n31864, C:\\Program Files\\WindowsApps\\Claude_2.31226.1.0_x64__pzs8sxrjxfjjc\\app\\claude.exe, [N/A]\r\n1040, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n33816, C:\\Program Files\\NVIDIA Corporation\\NvContainer\\nvcontainer.exe, [N/A]\r\n17492, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n39060, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.62\\msedgewebview2.exe, [N/A]\r\n27392, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]\r\n9820, C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe, [N/A]\r\n21484, C:\\Users\\itay7\\AppData\\Local\\Discord\\app-1.0.9261\\Discord.exe, [N/A]\r\n35528, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]\r\n30276, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]\r\n32072, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]",
+  "gpuAfterBusy": "gpu util,mem: 35 %, 1495 MiB; compute apps: 29188, C:\\Windows\\explorer.exe, [N/A]\r\n4996, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\TextInputHost.exe, [N/A]\r\n16324, C:\\Program Files\\WindowsApps\\Microsoft.ScreenSketch_11.2607.23.0_x64__8wekyb3d8bbwe\\SnippingTool\\SnippingTool.exe, [N/A]\r\n30020, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\SearchHost.exe, [N/A]\r\n25536, C:\\Windows\\SystemApps\\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\\StartMenuExperienceHost.exe, [N/A]\r\n6628, C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe, [N/A]\r\n31864, C:\\Program Files\\WindowsApps\\Claude_2.31226.1.0_x64__pzs8sxrjxfjjc\\app\\claude.exe, [N/A]\r\n1040, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n33816, C:\\Program Files\\NVIDIA Corporation\\NvContainer\\nvcontainer.exe, [N/A]\r\n17492, C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA Overlay.exe, [N/A]\r\n39060, C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.62\\msedgewebview2.exe, [N/A]\r\n27392, C:\\Windows\\SystemApps\\ShellExperienceHost_cw5n1h2txyewy\\ShellExperienceHost.exe, [N/A]\r\n9820, C:\\Program Files\\Docker\\Docker\\frontend\\Docker Desktop.exe, [N/A]\r\n21484, C:\\Users\\itay7\\AppData\\Local\\Discord\\app-1.0.9261\\Discord.exe, [N/A]\r\n35528, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]\r\n30276, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]\r\n32072, C:\\dev\\pw-browsers\\chromium-1243\\chrome-win64\\chrome.exe, [N/A]"
  },
  "model": {
   "phase": "ready",
@@ -80,56 +80,50 @@
   "message": "",
   "videos": 0,
   "bytes": 0,
-  "setupSeconds": 26.191
+  "setupSeconds": 2.906
  },
  "videos": [
   {
    "video": "ANv5UfZsvZQ",
    "kind": "launch",
    "durationS": 217,
-   "previewAvailable": false,
-   "previewSeconds": null,
+   "previewAvailable": true,
+   "previewSeconds": 12.576,
    "kindAfterRead": "partial",
    "pageWarnings": [
-    "Moments: 4 frames had no picture and were skipped",
-    "Moments: the player does not hold this video's length NaN 217",
-    "Moments: the player does not hold this video's length NaN 217",
-    "Moments: the player does not hold this video's length NaN 217"
+    "Moments: 1 frames had no picture and were skipped",
+    "Moments: the player stopped working during the full-detail read; loading the video again"
    ],
-   "fullSeconds": 27.605,
-   "fullSecondsPerMinute": 7.6327188940092165
+   "fullSeconds": 12.167,
+   "fullSecondsPerMinute": 3.364147465437788
   },
   {
    "video": "5_RInEohkwA",
    "kind": "game",
    "durationS": 160,
    "previewAvailable": true,
-   "previewSeconds": 10.053,
+   "previewSeconds": 9.791,
    "kindAfterRead": "partial",
    "pageWarnings": [
-    "Moments: 5 frames had no picture and were skipped",
-    "Moments: the player does not hold this video's length NaN 160",
-    "Moments: the player does not hold this video's length NaN 160",
-    "Moments: the player does not hold this video's length NaN 160"
+    "Moments: 1 frames had no picture and were skipped",
+    "Moments: the player stopped working during the full-detail read; loading the video again"
    ],
-   "fullSeconds": 32.162,
-   "fullSecondsPerMinute": 12.06075
+   "fullSeconds": 11.928,
+   "fullSecondsPerMinute": 4.473000000000001
   },
   {
    "video": "9biIOtEYeHc",
    "kind": "cooking",
    "durationS": 255,
    "previewAvailable": true,
-   "previewSeconds": 14.428,
+   "previewSeconds": 14.942,
    "kindAfterRead": "partial",
    "pageWarnings": [
-    "Moments: 5 frames had no picture and were skipped",
-    "Moments: the player does not hold this video's length NaN 255",
-    "Moments: the player does not hold this video's length NaN 255",
-    "Moments: the player does not hold this video's length NaN 255"
+    "Moments: 1 frames had no picture and were skipped",
+    "Moments: the player stopped working during the full-detail read; loading the video again"
    ],
-   "fullSeconds": 31.748,
-   "fullSecondsPerMinute": 7.4701176470588235
+   "fullSeconds": 12.373,
+   "fullSecondsPerMinute": 2.9112941176470586
   }
  ],
  "queries": [
@@ -143,15 +137,24 @@
      4
     ]
    ],
-   "previewAvailable": false,
-   "previewRank": null,
+   "previewAvailable": true,
+   "previewRank": 1,
    "fullRank": 1,
-   "previewHits": [],
+   "previewHits": [
+    4,
+    84,
+    66,
+    180,
+    48,
+    138
+   ],
    "fullHits": [
     4,
     48,
-    14,
-    30
+    84,
+    66,
+    180,
+    138
    ],
    "kindAtRead": "partial",
    "engineKind": "partial",
@@ -160,8 +163,10 @@
    "engineHits": [
     4,
     48,
-    14,
-    30
+    84,
+    66,
+    180,
+    138
    ],
    "barMatchesEngine": true
   },
@@ -175,25 +180,36 @@
      58
     ]
    ],
-   "previewAvailable": false,
-   "previewRank": null,
-   "fullRank": 1,
-   "previewHits": [],
-   "fullHits": [
+   "previewAvailable": true,
+   "previewRank": 2,
+   "fullRank": 2,
+   "previewHits": [
+    84,
     58,
-    6,
-    38,
-    20
+    162,
+    134,
+    8,
+    68
+   ],
+   "fullHits": [
+    84,
+    58,
+    162,
+    134,
+    68,
+    104
    ],
    "kindAtRead": "partial",
    "engineKind": "partial",
    "engineReadUntil": 58,
    "engineViewerStopped": false,
    "engineHits": [
+    84,
     58,
-    6,
-    38,
-    20
+    162,
+    134,
+    68,
+    104
    ],
    "barMatchesEngine": true
   },
@@ -211,25 +227,36 @@
      182
     ]
    ],
-   "previewAvailable": false,
-   "previewRank": null,
-   "fullRank": null,
-   "previewHits": [],
-   "fullHits": [
+   "previewAvailable": true,
+   "previewRank": 1,
+   "fullRank": 1,
+   "previewHits": [
+    180,
+    194,
+    138,
+    156,
     48,
-    8,
-    38,
-    22
+    8
+   ],
+   "fullHits": [
+    180,
+    194,
+    138,
+    48,
+    156,
+    104
    ],
    "kindAtRead": "partial",
    "engineKind": "partial",
    "engineReadUntil": 58,
    "engineViewerStopped": false,
    "engineHits": [
+    180,
+    194,
+    138,
     48,
-    8,
-    38,
-    22
+    156,
+    104
    ],
    "barMatchesEngine": true
   },
@@ -243,27 +270,36 @@
      168
     ]
    ],
-   "previewAvailable": false,
-   "previewRank": null,
-   "fullRank": null,
-   "previewHits": [],
-   "fullHits": [
+   "previewAvailable": true,
+   "previewRank": 5,
+   "fullRank": 4,
+   "previewHits": [
+    84,
+    66,
     52,
     8,
-    38,
-    28,
-    18
+    164,
+    104
+   ],
+   "fullHits": [
+    84,
+    66,
+    52,
+    164,
+    104,
+    130
    ],
    "kindAtRead": "partial",
    "engineKind": "partial",
    "engineReadUntil": 58,
    "engineViewerStopped": false,
    "engineHits": [
+    84,
+    66,
     52,
-    8,
-    38,
-    28,
-    18
+    164,
+    104,
+    130
    ],
    "barMatchesEngine": true
   },
@@ -277,25 +313,36 @@
      200
     ]
    ],
-   "previewAvailable": false,
-   "previewRank": null,
-   "fullRank": null,
-   "previewHits": [],
+   "previewAvailable": true,
+   "previewRank": 1,
+   "fullRank": 1,
+   "previewHits": [
+    200,
+    8,
+    84,
+    66,
+    104,
+    120
+   ],
    "fullHits": [
+    200,
     6,
+    84,
     52,
-    38,
-    26
+    66,
+    104
    ],
    "kindAtRead": "partial",
    "engineKind": "partial",
    "engineReadUntil": 58,
    "engineViewerStopped": false,
    "engineHits": [
+    200,
     6,
+    84,
     52,
-    38,
-    26
+    66,
+    104
    ],
    "barMatchesEngine": true
   },
@@ -729,116 +776,5 @@
    ],
    "barMatchesEngine": true
   }
- ],
- "stutterControl": {
-  "quiet": {
-   "share": 0,
-   "slices": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
-   ],
-   "sliceEndedInAd": [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false
-   ]
-  },
-  "secondTabPlaying": {
-   "share": 0,
-   "slices": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
-   ],
-   "sliceEndedInAd": [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false
-   ]
-  },
-  "quietAgain": {
-   "share": 0.002663115845539281,
-   "slices": [
-    0.016129032258064516,
-    0,
-    0,
-    0,
-    0,
-    0
-   ],
-   "sliceEndedInAd": [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false
-   ]
-  },
-  "secondTabReading": {
-   "share": 0.08955223880597014,
-   "slices": [
-    0,
-    0.4074074074074074,
-    0,
-    0,
-    0,
-    0
-   ],
-   "sliceEndedInAd": [
-    false,
-    false,
-    false,
-    false,
-    false,
-    false
-   ]
-  },
-  "readEndedAtS": null,
-  "readingTabAtEachSlice": [
-   {
-    "atS": 6.765,
-    "kind": "none",
-    "status": "Describe a moment in this video and press Enter."
-   },
-   {
-    "atS": 11.784,
-    "kind": "none",
-    "status": "The AI model stopped (the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n - While handling unexpected error type Internal when allowed errors are Validation.\n    at C...) and is restarting. This can take a minute."
-   },
-   {
-    "atS": 16.805,
-    "kind": "none",
-    "status": "The AI model stopped (the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n - While handling unexpected error type Internal when allowed errors are Validation.\n    at C...) and is restarting. This can take a minute."
-   },
-   {
-    "atS": 21.833,
-    "kind": "none",
-    "status": "The AI model stopped (the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n - While handling unexpected error type Internal when allowed errors are Validation.\n    at C...) and is restarting. This can take a minute."
-   },
-   {
-    "atS": 26.861,
-    "kind": "none",
-    "status": "The AI model stopped (the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n - While handling unexpected error type Internal when allowed errors are Validation.\n    at C...) and is restarting. This can take a minute."
-   },
-   {
-    "atS": 31.878,
-    "kind": "none",
-    "status": "The AI model stopped (the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n - While handling unexpected error type Internal when allowed errors are Validation.\n    at C...) and is restarting. This can take a minute."
-   }
-  ]
- }
+ ]
 }

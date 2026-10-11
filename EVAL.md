@@ -276,3 +276,61 @@ the second), and four stutter controls. The first attempt on 5ea6c73 failed at o
 `stats` sent from a tab (fixed in 5aff594); the test now sends it from the service worker, which both versions
 accept. Main moved to 19cec5a while this ran (the popup is accepted in a tab; the bar is placed under the player once
 YouTube draws it); neither touches reading or search. No run hit a model-load stall or "Error: 9950264".
+
+### Second run, 2026-10-11 (main 4d8942a)
+
+Same test, same 15 pre-registered searches (`queries.json` unchanged), same profile with the model cached. Raw
+numbers: `extension/acceptance/results.json` (the first run's are in that file at 356a3b1). What changed since the first
+run:
+
+- The 159x90 preview level is used (PF31), so the launch video now has a preview read (109 frames).
+- A player that fails during a full read is detected: no length, YouTube's error, or two seeks in a row that never
+  land. The read then ends as partial, the video is loaded again at the viewer's second, and previews are asked for
+  to cover the rest (PF32).
+- The test browser starts without `--enable-automation` and with `--disable-blink-features=AutomationControlled`
+  (`navigator.webdriver` is false).
+- The first attempt stopped at the first preview read with a GPU driver reset (DXGI_ERROR_DEVICE_HUNG) while another
+  agent's screen recording used the GPU (PF33). It was run again once, as agreed beforehand. That attempt's model
+  setup took 34.6 s because the profile's whole `Service Worker` folder, model cache included, had been deleted
+  before it (PF34). The rerun's took 2.9 s.
+
+| | top 5 | first |
+|---|---|---|
+| after the full-detail read (the gate: 14 and 11) | **15 of 15** | **13 of 15** |
+| preview only, same searches | 15 of 15 | 13 of 15 |
+
+Verdict: **gate met.** By video: launch 5 of 5 in the top 5 and 3 of 5 first, game 5 and 5, cooking 5 and 5. The launch
+video's two non-first answers:
+- "a bright orange fireball and smoke as the rocket engines ignite" (56 to 58 s): 58 is second, after 84.
+- "a rocket coming down with its landing legs spread open above a bright flame" (164 to 168 s): 164 is fourth.
+
+The three answers after 58 s that the first run could not find (106 or 176 to 182 s, 164 to 168 s, 196 to 200 s) now
+rank 1, 4 and 1, from the previews kept after the read point. The bar's answers equal the engine's on all 15. As in the
+first run, the full-detail read changed no first place: ranks after it equal the preview-only ranks except the landing
+search (5 to 4).
+
+**Full reads still stop at 58, 58 and 57 s.** The new check now ends them ("the player stopped working during the
+full-detail read; loading the video again", once per video) and the player is loaded again. The reads took 12.2, 11.9
+and 12.4 s, about 10 s of that the two 5 s seek deadlines; the first 58 s were read in about 2 s. A probe in the same
+headless test browser was run with the two flags, `navigator.webdriver` false and without the extension, on the launch
+video. Seeks from 0 to 58 s landed. Seeks to 60, 62 and 64 s never landed in 5 s: readyState 1, the length kept, no
+error shown.
+
+So the 58 s stop is the test browser being refused by YouTube, not the extension (the first run's probe without the
+extension showed the same). The two flags are not enough here. The other agent saw a video seek past 1:00 with them,
+so the remaining difference is likely headless mode (its user agent says HeadlessChrome); not tested yet. There is still
+no full-read time for a whole video. Reading the first 58 s took about 2 s, roughly 2 s per minute of video, against the
+gate of 4.
+
+| video | length | preview read | full read ended | full read time |
+|---|---|---|---|---|
+| launch | 217 s | 12.6 s | partial at 58 s, player failure | 12.2 s |
+| game | 160 s | 9.8 s | partial at 58 s, player failure | 11.9 s |
+| cooking | 255 s | 14.9 s | partial at 57 s, player failure | 12.4 s |
+
+**Stutter while a second tab is read:** 3.2 %. The slices were 10.1, 10.2, 0, 0, 0 and 0 %; quiet before and after was
+0.0 %. That tab's read ended in another GPU driver reset ("The AI model stopped (the GPU was reset ... DXGI_ERROR_DEVICE_HUNG)
+and is restarting") while the other agent's recording shared the GPU. Background reading stays off by default.
+
+**Not measured in this run:** the scores behind "No clear match". The test now records each search's scores
+(`previewScores`, `engineScores`) for the next run, which sets the extension's own line.
