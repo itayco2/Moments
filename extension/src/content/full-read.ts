@@ -83,6 +83,7 @@ export async function fullRead(d: FullReadDeps): Promise<ReadOutcome> {
   const { video, times } = d;
   const outcome: ReadOutcome = { complete: false, sent: 0, blank: 0 };
   if (d.isAd() || !d.isCurrent()) return outcome; // the caller waits for the ad; this never touches one
+  if (times.length === 0) return { ...outcome, complete: !d.signal.aborted }; // a continued read with nothing left
   const saved = { t: video.currentTime, playing: !video.paused };
   let batch: Frame[] = [];
   const flush = () => {

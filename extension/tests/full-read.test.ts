@@ -103,6 +103,13 @@ describe("fullRead", () => {
     expect(done.at(-1)).toBe(20);
   });
 
+  it("leaves the player alone when nothing is left to read (a partial read that had reached the end)", async () => {
+    const video = new FakeVideo();
+    expect(await run(video, { times: [] }).promise).toEqual({ complete: true, sent: 0, blank: 0 });
+    expect(video.pauses).toBe(0);
+    expect(video.seeks).toEqual([]);
+  });
+
   it("skips frames with no picture and counts them", async () => {
     const video = new FakeVideo();
     const { promise, sent } = run(video, { capture: () => (video.currentTime < 10 ? null : "data:image/jpeg;base64,x") });
