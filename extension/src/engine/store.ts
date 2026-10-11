@@ -53,6 +53,14 @@ export async function loadVideo(videoId: string): Promise<SavedVideo | undefined
   return saved;
 }
 
+// Marks a video as opened now, without loading its vectors: the storage cap evicts the longest unopened video first.
+export async function touchVideo(videoId: string): Promise<void> {
+  const tx = (await db()).transaction("meta", "readwrite");
+  const meta = (await result(tx.objectStore("meta").get(videoId))) as StoredMeta | undefined;
+  if (meta) tx.objectStore("meta").put({ ...meta, lastOpened: Date.now() });
+  await finished(tx);
+}
+
 export async function saveVideo(v: SavedVideo): Promise<void> {
   const tx = (await db()).transaction(["meta", "vectors"], "readwrite");
   tx.objectStore("vectors").put(v);

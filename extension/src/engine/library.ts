@@ -4,7 +4,7 @@ import { fp16ToFloat32 } from "../../../web/src/format";
 import { isWeakMatch, type Row, search } from "../../../web/src/search";
 import { toFp16 } from "../fp16";
 import type { Hit } from "../protocol";
-import { loadVideo, saveVideo } from "./store";
+import { loadVideo, saveVideo, touchVideo } from "./store";
 
 export interface Part {
   times: number[];
@@ -40,9 +40,16 @@ function entry(kind: Entry["kind"], part: Part, dim: number): Entry {
   return { kind, dim, ...part, rows: part.times.map((t) => ({ video: "this", start: t, end: t + 1, thumb: "" })) };
 }
 
+// A full-detail read is sent by one tab. Its frames wait here until that tab finishes the read or goes away.
+interface Pending {
+  owner: object;
+  times: number[];
+  vectors: Float32Array[];
+}
+
 export class Library {
   private entries = new Map<string, Entry>();
-  private pending = new Map<string, { times: number[]; vectors: Float32Array[] }>();
+  private pending = new Map<string, Pending>();
 
   async get(videoId: string): Promise<Entry | null> {
     const cached = this.entries.get(videoId);
@@ -57,21 +64,38 @@ export class Library {
     return loaded;
   }
 
+  // A tab opened this video. A saved video is already marked by loading it; one served from memory is marked here, or
+  // the storage cap would evict a video that is opened every day.
+  async open(videoId: string): Promise<Entry | null> {
+    if (!this.entries.has(videoId)) return this.get(videoId);
+    await touchVideo(videoId).catch((err: unknown) => console.warn("Moments: could not mark the video as opened", videoId, err));
+    return this.get(videoId);
+  }
+
   async put(videoId: string, kind: Entry["kind"], times: number[], vectors: Float32Array[]): Promise<Entry> {
     return this.store(videoId, entry(kind, { times, vectors: flatten(vectors, DIM) }, DIM));
   }
 
-  addFull(videoId: string, times: number[], vectors: Float32Array[]): void {
-    const p = this.pending.get(videoId) ?? { times: [], vectors: [] };
+  // Frames from a different tab than the one that started the pending read replace it: they cannot be joined.
+  addFull(videoId: string, owner: object, times: number[], vectors: Float32Array[]): void {
+    const current = this.pending.get(videoId);
+    const p = current?.owner === owner ? current : { owner, times: [], vectors: [] };
     p.times.push(...times);
     p.vectors.push(...vectors);
     this.pending.set(videoId, p);
   }
 
-  async finishFull(videoId: string, complete: boolean): Promise<Entry | null> {
+  // The tab went away mid-read: what it sent is a stale fragment.
+  dropPending(owner: object): void {
+    for (const [videoId, p] of this.pending) if (p.owner === owner) this.pending.delete(videoId);
+  }
+
+  // Only the tab that sent the frames can finish their read.
+  async finishFull(videoId: string, complete: boolean, owner: object): Promise<Entry | null> {
     const p = this.pending.get(videoId);
+    if (p?.owner !== owner) return this.get(videoId);
     this.pending.delete(videoId);
-    if (!p || p.times.length === 0) return this.get(videoId);
+    if (p.times.length === 0) return this.get(videoId);
     const full = { times: p.times, vectors: flatten(p.vectors, DIM) };
     const before = complete ? null : await this.get(videoId);
     const part = complete ? full : mergePartial(full, before, DIM);

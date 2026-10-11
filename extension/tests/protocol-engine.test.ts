@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_FRAMES_PER_MESSAGE, MAX_QUERY, parseToEngine } from "../src/protocol";
+import { MAX_FRAMES_PER_MESSAGE, MAX_QUERY, MAX_SPEC_CHARS, parseToEngine } from "../src/protocol";
 
 const jpeg = "data:image/jpeg;base64,/9j/4AAQ";
 
@@ -20,5 +20,13 @@ describe("parseToEngine", () => {
     expect(parseToEngine({ type: "full-frames", videoId: "dQw4w9WgXcQ", frames: many })).toBeNull();
     expect(parseToEngine({ type: "open", videoId: "dQw4w9WgXcQ", duration: 213, spec: 5, autoRead: true })).toBeNull();
     expect(parseToEngine({ type: "unknown" })).toBeNull();
+  });
+
+  it("caps the preview spec at the length the page reader allows", () => {
+    const prefix = "https://i.ytimg.com/sb/dQw4w9WgXcQ/";
+    const open = (spec: string) => parseToEngine({ type: "open", videoId: "dQw4w9WgXcQ", duration: 213, spec, autoRead: true });
+    expect(open(prefix + "x".repeat(MAX_SPEC_CHARS - prefix.length))).toMatchObject({ type: "open" });
+    expect(open(prefix + "x".repeat(MAX_SPEC_CHARS - prefix.length + 1))).toBeNull();
+    expect(open(prefix + "x".repeat(1_000_000))).toBeNull();
   });
 });

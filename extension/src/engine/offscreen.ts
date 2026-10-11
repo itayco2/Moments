@@ -3,9 +3,11 @@
 import { IMAGES_PER_BATCH } from "../../../web/src/config";
 import { Embedder } from "../../../web/src/embedder";
 import { type FromEngine, type ModelMessage, parseToEngine, type StateMessage, type ToEngine } from "../protocol";
-import { bestLevel, parseSpec, tiles } from "../storyboard";
+import { bestLevel, parseSpec } from "../storyboard";
 import { Library } from "./library";
-import { decodeFrames, readSheets } from "./sheets";
+import { type ReadJob, ReadQueue } from "./queue";
+import { failureReplies, knownState } from "./replies";
+import { decodeFrames, previewTiles, readSheets } from "./sheets";
 import { forgetAll, usage } from "./store";
 
 const ports = new Set<chrome.runtime.Port>();
@@ -13,7 +15,7 @@ const library = new Library();
 let embedder: Embedder | null = null;
 let loading: Promise<Embedder> | null = null;
 let model: ModelMessage = { type: "model", phase: "idle", loaded: 0, total: 0, device: null, message: "" };
-const queue: { videoId: string; duration: number; spec: string | null; port: chrome.runtime.Port }[] = [];
+const queue = new ReadQueue<chrome.runtime.Port>();
 let reading = false;
 
 const send = (port: chrome.runtime.Port, m: FromEngine) => {
@@ -49,25 +51,27 @@ function ensureModel(): Promise<Embedder> {
   return loading;
 }
 
-async function previewRead(job: (typeof queue)[number]): Promise<void> {
-  const { videoId, duration, spec, port } = job;
-  const sb = spec ? parseSpec(spec) : null;
+// Every tab that asked for this video hears about the read, including tabs that joined while it was running.
+async function previewRead(job: ReadJob<chrome.runtime.Port>): Promise<void> {
+  const { videoId, duration, spec } = job;
+  const tell = (s: Omit<StateMessage, "type">) => job.ports.forEach((port) => state(port, s));
+  const sb = parseSpec(spec);
   const level = sb && sb.videoId === videoId ? bestLevel(sb) : null;
-  if (!sb || !level) {
-    state(port, { videoId, kind: "none", reading: null, done: 0, total: 0, problem: "no-previews", message: "" });
+  const list = sb && level ? previewTiles(sb, level, duration) : null;
+  if (!list) {
+    tell({ videoId, kind: "none", reading: null, done: 0, total: 0, problem: "no-previews", message: "" });
     return;
   }
-  const list = tiles(sb, level, duration);
   const e = await ensureModel();
   const times: number[] = [];
   const vectors: Float32Array[] = [];
   for await (const batch of readSheets(list, IMAGES_PER_BATCH)) {
     vectors.push(...(await e.embedImages(batch.images)));
     times.push(...batch.times);
-    state(port, { videoId, kind: "none", reading: "preview", done: times.length, total: list.length, problem: null, message: "" });
+    tell({ videoId, kind: "none", reading: "preview", done: times.length, total: list.length, problem: null, message: "" });
   }
   await library.put(videoId, "preview", times, vectors);
-  state(port, { videoId, kind: "preview", reading: null, done: times.length, total: list.length, problem: null, message: "" });
+  tell({ videoId, kind: "preview", reading: null, done: times.length, total: list.length, problem: null, message: "" });
 }
 
 // One preview read at a time; the most recently opened video goes first.
@@ -75,29 +79,38 @@ async function drain(): Promise<void> {
   if (reading) return;
   reading = true;
   try {
-    for (let job = queue.pop(); job; job = queue.pop()) {
-      if (!ports.has(job.port) || (await library.get(job.videoId))) continue;
+    for (let job = queue.next(); job; job = queue.next()) {
+      if (![...job.ports].some((p) => ports.has(p))) continue; // every tab that asked has gone
+      const known = await library.get(job.videoId);
+      if (known) {
+        job.ports.forEach((p) => send(p, knownState(job.videoId, known))); // it was read while this job waited
+        continue;
+      }
       await previewRead(job).catch((err: unknown) => {
         console.warn("Moments: preview read failed", job.videoId, err);
-        state(job.port, { videoId: job.videoId, kind: "none", reading: null, done: 0, total: 0, problem: "error", message: String(err) });
+        job.ports.forEach((p) => state(p, { videoId: job.videoId, kind: "none", reading: null, done: 0, total: 0, problem: "error", message: String(err) }));
       });
     }
   } finally {
+    queue.finish();
     reading = false;
   }
 }
 
+const TOO_MANY_WAITING = "Too many videos are waiting to be read. Open this one again in a moment.";
+
 async function handle(port: chrome.runtime.Port, m: ToEngine): Promise<void> {
   switch (m.type) {
     case "open": {
-      const known = await library.get(m.videoId);
+      const known = await library.open(m.videoId);
       if (known) {
-        state(port, { videoId: m.videoId, kind: known.kind, reading: null, done: known.times.length, total: known.times.length, problem: null, message: "" });
+        send(port, knownState(m.videoId, known));
         return;
       }
       state(port, { videoId: m.videoId, kind: "none", reading: null, done: 0, total: 0, problem: m.spec ? null : "no-previews", message: "" });
       if (m.autoRead && m.spec) {
-        queue.push({ videoId: m.videoId, duration: m.duration, spec: m.spec, port });
+        const dropped = queue.add({ videoId: m.videoId, duration: m.duration, spec: m.spec }, port);
+        dropped?.ports.forEach((p) => state(p, { videoId: dropped.videoId, kind: "none", reading: null, done: 0, total: 0, problem: "error", message: TOO_MANY_WAITING }));
         void drain();
       }
       return;
@@ -113,11 +126,11 @@ async function handle(port: chrome.runtime.Port, m: ToEngine): Promise<void> {
     case "full-frames": {
       const e = await ensureModel();
       const vectors = await e.embedImages(await decodeFrames(m.frames));
-      library.addFull(m.videoId, m.frames.map((f) => f.t), vectors);
+      if (ports.has(port)) library.addFull(m.videoId, port, m.frames.map((f) => f.t), vectors); // not for a tab that left meanwhile
       return;
     }
     case "full-end": {
-      const done = await library.finishFull(m.videoId, m.complete);
+      const done = await library.finishFull(m.videoId, m.complete, port);
       const n = done?.times.length ?? 0;
       state(port, { videoId: m.videoId, kind: done?.kind ?? "none", reading: null, done: n, total: n, problem: null, message: "" });
       return;
@@ -138,13 +151,18 @@ chrome.runtime.onConnect.addListener((port) => {
       return;
     }
     chain = chain.then(() =>
-      handle(port, m).catch((err: unknown) => {
+      handle(port, m).catch(async (err: unknown) => {
         console.warn("Moments: engine error", err);
-        if ("videoId" in m) state(port, { videoId: m.videoId, kind: "none", reading: null, done: 0, total: 0, problem: "error", message: String(err) });
+        const kind = (await library.get(m.videoId).catch(() => null))?.kind ?? "none";
+        failureReplies(m, kind, err).forEach((reply) => send(port, reply));
       }),
     );
   });
-  port.onDisconnect.addListener(() => ports.delete(port));
+  // Frames already sent are handled first; whatever is left of an unfinished full-detail read is a stale fragment.
+  port.onDisconnect.addListener(() => {
+    ports.delete(port);
+    chain = chain.then(() => library.dropPending(port));
+  });
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
@@ -164,3 +182,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   }
   return false;
 });
+
+// Last of all, once every listener above exists: Chrome can refuse a message or port that arrives before the module
+// has finished evaluating, so the service worker waits for this before it says the engine is there.
+chrome.runtime.sendMessage({ type: "engine:ready" }).catch(() => undefined);

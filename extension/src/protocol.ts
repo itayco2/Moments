@@ -5,7 +5,7 @@ export type { VideoInfo };
 export const PAGE_SOURCE = "moments-page";
 export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 export const MAX_DURATION_S = 48 * 3600;
-const MAX_SPEC_CHARS = 4000;
+export const MAX_SPEC_CHARS = 4000;
 
 export function parsePageMessage(data: unknown): VideoInfo | null {
   if (typeof data !== "object" || data === null) return null;
@@ -76,7 +76,9 @@ export function parseToEngine(msg: unknown): ToEngine | null {
   switch (m.type) {
     case "open":
       if (!isTime(m.duration) || typeof m.autoRead !== "boolean") return null;
-      if (m.spec !== null && (typeof m.spec !== "string" || !m.spec.startsWith(`https://i.ytimg.com/sb/${m.videoId}/`))) return null;
+      if (m.spec !== null && (typeof m.spec !== "string" || m.spec.length > MAX_SPEC_CHARS || !m.spec.startsWith(`https://i.ytimg.com/sb/${m.videoId}/`))) {
+        return null;
+      }
       return { type: "open", videoId: m.videoId, duration: m.duration, spec: m.spec as string | null, autoRead: m.autoRead };
     case "search":
       if (!Number.isInteger(m.id) || typeof m.query !== "string" || m.query.length === 0 || m.query.length > MAX_QUERY) return null;
