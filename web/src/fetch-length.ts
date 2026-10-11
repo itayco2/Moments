@@ -47,19 +47,33 @@ async function fromMirror(plain: Fetch, url: string, init: RequestInit): Promise
   }
 }
 
+// Stops the download of an answer whose body nobody has started reading. transformers.js starts reading an answer
+// it means to use as soon as it gets it, so one still unread when its file is asked for again was dropped.
+function closeIfUnread(res: Response | undefined): void {
+  if (res?.body && !res.bodyUsed && !res.body.locked) void res.body.cancel().catch(() => undefined);
+}
+
 // transformers.js keeps its own copy of each model file (the Cache API), so the browser's HTTP cache is skipped
 // for them: storing a 200 MB response there failed in a fresh profile (ERR_CACHE_WRITE_FAILURE), stalled the
 // download and crashed the tab (PREFLIGHT PF24). Every other request goes through untouched.
 // The website's copy answers first, so a network that blocks Hugging Face still loads and Hugging Face sees
 // nothing unless the copy fails.
+// transformers.js asks for each file twice when given a progress callback: first only for its size, reading
+// the headers of a full download and never closing it, then for the bytes. Over HTTP/2 every request shares
+// one connection, and the two unread 200 MB answers stalled it: every download stopped at about 130 of 402 MB
+// (PREFLIGHT PF25). So the earlier answer for a file is closed when the file is asked for again.
 export function modelFetch(plain: Fetch, files: ModelFile[], mirror?: Mirror): Fetch {
+  const lastAnswer = new Map<string, Response>();
   return async (input, init) => {
     const url = String(input);
     const size = sizeFor(url, files);
     if (size === undefined) return plain(input, init);
+    closeIfUnread(lastAnswer.get(url));
     const options = { ...init, cache: "no-store" as const };
     const mirrored = mirror && mirrorUrl(url, mirror);
     const res = (mirrored && (await fromMirror(plain, mirrored, options))) || (await plain(input, options));
-    return withKnownLength(res, size);
+    const answer = withKnownLength(res, size);
+    lastAnswer.set(url, answer);
+    return answer;
   };
 }

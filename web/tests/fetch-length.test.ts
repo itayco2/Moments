@@ -63,6 +63,58 @@ describe("modelFetch", () => {
   });
 });
 
+describe("modelFetch closes answers nobody reads (PF25)", () => {
+  const URL_DATA = "/models/daa72c5/m/onnx/model_q4.onnx_data";
+  const URL_OTHER = "/models/daa72c5/m/onnx/vision_encoder_quantized.onnx_data";
+  const FILES2 = [
+    { path: "onnx/model_q4.onnx_data", size: 3 },
+    { path: "onnx/vision_encoder_quantized.onnx_data", size: 3 },
+  ];
+
+  // Every answer is a stream that records whether it was cancelled, like a network body still arriving.
+  function setup() {
+    const cancelled: boolean[] = [];
+    const fake = async () => {
+      const i = cancelled.push(false) - 1;
+      const body = new ReadableStream<Uint8Array>({
+        pull: (c) => c.enqueue(new Uint8Array([1, 2, 3])),
+        cancel: () => {
+          cancelled[i] = true;
+        },
+      });
+      return new Response(body, { status: 200 });
+    };
+    return { cancelled, fetchModel: modelFetch(fake, FILES2) };
+  }
+
+  it("closes the size probe's unread answer when the same file is asked for again", async () => {
+    // transformers.js reads only the headers of its first request for each file and never closes it; over
+    // HTTP/2 the unread 200 MB answers held the shared connection until every download stopped.
+    const { cancelled, fetchModel } = setup();
+    await fetchModel(URL_DATA);
+    const real = await fetchModel(URL_DATA);
+    expect(cancelled).toEqual([true, false]);
+    const { value } = await real.body!.getReader().read();
+    expect(Array.from(value!)).toEqual([1, 2, 3]);
+  });
+
+  it("never closes an answer that is being read", async () => {
+    const { cancelled, fetchModel } = setup();
+    const first = await fetchModel(URL_DATA);
+    const reader = first.body!.getReader();
+    await fetchModel(URL_DATA);
+    expect(cancelled).toEqual([false, false]);
+    expect((await reader.read()).done).toBe(false);
+  });
+
+  it("leaves other files' answers alone", async () => {
+    const { cancelled, fetchModel } = setup();
+    await fetchModel(URL_DATA);
+    await fetchModel(URL_OTHER);
+    expect(cancelled).toEqual([false, false]);
+  });
+});
+
 describe("modelFetch with the website's copy as a mirror", () => {
   const HF = "https://huggingface.co/onnx-community/m/resolve/";
   const SITE = "https://site.app/models/daa72c5/onnx-community/m/";
