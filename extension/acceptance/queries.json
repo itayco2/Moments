@@ -1,0 +1,41 @@
+{
+  "tolerance_s": 2,
+  "videos": [
+    {
+      "id": "ANv5UfZsvZQ",
+      "kind": "launch",
+      "title": "\"The Falcon has landed\" | Recap of Falcon 9 launch and landing",
+      "queries": [
+        { "q": "an American flag on the white side of a rocket", "answer": [[4, 4]] },
+        { "q": "a bright orange fireball and smoke as the rocket engines ignite", "answer": [[56, 58]] },
+        { "q": "a satellite floating in space with the curved edge of the Earth below it", "answer": [[106, 106], [176, 182]] },
+        { "q": "a rocket coming down with its landing legs spread open above a bright flame", "answer": [[164, 168]] },
+        { "q": "a tall rocket standing upright against a pink and orange sunset sky", "answer": [[196, 200]] }
+      ]
+    },
+    {
+      "id": "5_RInEohkwA",
+      "kind": "game",
+      "title": "Super Mario Bros. Wonder hits Nintendo Switch October 20th!",
+      "queries": [
+        { "q": "a glowing blue flower with a face floating in the sky", "answer": [[46, 50]] },
+        { "q": "an overhead view of a green hilly landscape with winding paths", "answer": [[88, 88]] },
+        { "q": "a princess in an orange dress and a yellow turtle character beside a teal pipe", "answer": [[96, 96]] },
+        { "q": "Mario at the top of a tall flagpole at the end of the level", "answer": [[126, 132]] },
+        { "q": "an elephant version of Mario standing in front of green hills", "answer": [[150, 150]] }
+      ]
+    },
+    {
+      "id": "9biIOtEYeHc",
+      "kind": "cooking",
+      "title": "How To Make Slow Roasted Pork Belly | Gordon Ramsay",
+      "queries": [
+        { "q": "a knife chopping a pale green fennel bulb on a board", "answer": [[46, 52]] },
+        { "q": "green cardamom pods on a dark surface crushed with the flat of a knife", "answer": [[78, 80]] },
+        { "q": "the inside of an oven with a glowing orange light", "answer": [[150, 152]] },
+        { "q": "a modern house with a big green lawn in front", "answer": [[154, 156]] },
+        { "q": "a slice of white bread soaked in brown gravy in a roasting tray", "answer": [[186, 194]] }
+      ]
+    }
+  ]
+}
