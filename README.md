@@ -17,6 +17,28 @@ opens on that moment.
 | a hurricane seen from space | Earth from the space station at 32:28, the eye through a window |
 | a red and white parachute | the Perseverance landing at 4:56 |
 
+## Moments for YouTube (Chrome extension)
+
+Type what you want to see in a YouTube video and jump to that second. The model runs on your own computer, so
+nothing about you or the video leaves it. It is not on the Chrome Web Store: you install it from a folder.
+
+### Install in one minute
+
+1. Download [moments-youtube-1.0.0.zip](https://github.com/itayco2/Moments/releases/latest/download/moments-youtube-1.0.0.zip)
+   and unzip it.
+2. Open `chrome://extensions` (type it in the address bar).
+3. Turn on **Developer mode** (top right).
+4. Click **Load unpacked** and choose the unzipped folder.
+
+Then open any YouTube video; the Moments bar sits under the player.
+
+- **First use** downloads the AI model once (about 400 MB). The browser keeps it for next time.
+- **The first search** reads the video in full detail: the player pauses and steps through the video. Skip or Esc stops it.
+- **YouTube tabs that were open before you installed** need a reload.
+- **Needs** Chrome 124 or newer (or Edge or Brave) with WebGPU for full speed; it also runs on the CPU, slower.
+- **Privacy:** [moments-video.vercel.app/privacy.html](https://moments-video.vercel.app/privacy.html).
+- **Build from source:** `cd extension && npm ci && npm run build`, then load `extension/dist`.
+
 ## What it does well, measured
 
 53 descriptions written before the first search, each with the time ranges where the answer really is

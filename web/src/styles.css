@@ -185,6 +185,23 @@ h2 { font-size: 36px; line-height: 1.12; letter-spacing: -0.03em; font-weight: 6
 .measured-foot p { font-size: 14px; line-height: 1.6; color: var(--muted); max-width: 640px; }
 .measured-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 14px; font-weight: 500; }
 
+/* the extension card: quieter than the demo, same card language as the steps */
+.ext { padding-top: 72px; }
+.ext-card {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 48px; align-items: center;
+  padding: 32px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+}
+.ext-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.ext h2 { font-size: 28px; line-height: 1.15; }
+.ext-intro p { font-size: 15px; line-height: 1.55; color: var(--body); max-width: 480px; }
+.ext-intro .hint { font-size: 13px; color: var(--muted); }
+.ext-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ext-steps li { display: flex; align-items: baseline; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.5; color: var(--body); }
+.ext-steps li:first-child { border-top: 0; padding-top: 0; }
+.ext-steps li:last-child { padding-bottom: 0; }
+.ext-steps .num { font-size: 13px; color: var(--accent); flex: none; }
+.ext-steps code { font-size: 13px; padding: 2px 6px; border-radius: 6px; background: var(--sunken); color: var(--ink); }
+
 .site-footer { margin-top: 96px; border-top: 1px solid var(--line); }
 .footer-row { padding-top: 28px; padding-bottom: 40px; display: flex; justify-content: space-between; gap: 12px 32px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 .footer-name { color: var(--ink); font-weight: 600; }
@@ -239,6 +256,10 @@ h2 { font-size: 36px; line-height: 1.12; letter-spacing: -0.03em; font-weight: 6
   .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; }
   .chip { flex: none; height: 36px; }
   .section { padding-top: 56px; gap: 20px; }
+  .ext { padding-top: 40px; }
+  .ext-card { grid-template-columns: minmax(0, 1fr); padding: 20px; gap: 20px; }
+  .ext h2 { font-size: 24px; }
+  .ext-intro .btn-primary { width: 100%; justify-content: center; height: 48px; }
   h2 { font-size: 26px; }
   .stats-row .big { font-size: 38px; }
 }
