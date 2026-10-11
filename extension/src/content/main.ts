@@ -62,10 +62,20 @@ chrome.runtime.onMessage.addListener((m, sender) => {
   return false;
 });
 
+// During a full-detail read: Esc stops it, and so does any player key (YouTube's seek keys would move the player
+// under the read). Browser shortcuts (Ctrl, Alt, Meta) and keys typed into the bar do not.
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
 document.addEventListener(
   "keydown",
   (e) => {
-    if (e.isTrusted && e.key === "Escape" && controller.escape()) e.stopPropagation();
+    if (!e.isTrusted || !controller.isReading) return;
+    if (e.key === "Escape") {
+      controller.escape();
+      e.stopPropagation();
+      return;
+    }
+    if (e.ctrlKey || e.altKey || e.metaKey || MODIFIERS.has(e.key) || e.composedPath().includes(bar.host)) return;
+    controller.skip();
   },
   true,
 );
