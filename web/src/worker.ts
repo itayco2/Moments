@@ -24,7 +24,11 @@ if (MODEL_BASE) {
 }
 if (ORT_BASE && env.backends.onnx.wasm) env.backends.onnx.wasm.wasmPaths = new URL(ORT_BASE, self.location.href).href;
 const PINNED = { revision: MODEL_REVISION };
-env.fetch = modelFetch(env.fetch, MODEL_FILES);
+// With a model copy of our own, Hugging Face URLs of the files we host are answered from it first (MODEL_BASE can be relative).
+const MIRROR = MODEL_BASE
+  ? { from: `https://huggingface.co/${MODEL_ID}/resolve/`, to: `${new URL(MODEL_BASE, self.location.href).href}${MODEL_ID}/` }
+  : undefined;
+env.fetch = modelFetch(env.fetch, MODEL_FILES, MIRROR);
 
 type Device = "webgpu" | "wasm";
 

@@ -22,13 +22,44 @@ export function withKnownLength(res: Response, size: number): Response {
 
 type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
+// Where Hugging Face URLs of hosted files can be answered from instead: `from` is the start of such a URL
+// (up to and including "/resolve/"), `to` is the folder holding the same files (ending in "/").
+export interface Mirror {
+  from: string;
+  to: string;
+}
+
+const REVISION_TAIL = /\/resolve\/[^/]+\/(.+)$/; // "/resolve/<revision>/<path>": a branch name or a commit
+
+export function mirrorUrl(url: string, mirror: Mirror): string | null {
+  if (!url.startsWith(mirror.from)) return null;
+  const path = REVISION_TAIL.exec(new URL(url).pathname)?.[1];
+  return path ? mirror.to + path : null;
+}
+
+// null when the copy is missing or unreachable: the caller then asks the original address.
+async function fromMirror(plain: Fetch, url: string, init: RequestInit): Promise<Response | null> {
+  try {
+    const res = await plain(url, init);
+    return res.ok ? res : null; // 200, and 206 for a Range probe
+  } catch {
+    return null;
+  }
+}
+
 // transformers.js keeps its own copy of each model file (the Cache API), so the browser's HTTP cache is skipped
 // for them: storing a 200 MB response there failed in a fresh profile (ERR_CACHE_WRITE_FAILURE), stalled the
 // download and crashed the tab (PREFLIGHT PF24). Every other request goes through untouched.
-export function modelFetch(plain: Fetch, files: ModelFile[]): Fetch {
+// The website's copy answers first, so a network that blocks Hugging Face still loads and Hugging Face sees
+// nothing unless the copy fails.
+export function modelFetch(plain: Fetch, files: ModelFile[], mirror?: Mirror): Fetch {
   return async (input, init) => {
-    const size = sizeFor(String(input), files);
+    const url = String(input);
+    const size = sizeFor(url, files);
     if (size === undefined) return plain(input, init);
-    return withKnownLength(await plain(input, { ...init, cache: "no-store" }), size);
+    const options = { ...init, cache: "no-store" as const };
+    const mirrored = mirror && mirrorUrl(url, mirror);
+    const res = (mirrored && (await fromMirror(plain, mirrored, options))) || (await plain(input, options));
+    return withKnownLength(res, size);
   };
 }
