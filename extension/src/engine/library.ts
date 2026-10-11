@@ -15,6 +15,8 @@ export interface Entry extends Part {
   kind: SavedKind;
   // Full detail covers 0:00 up to this time (0 for previews). In a partial entry, the frames after it are previews.
   readUntil: number;
+  // A partial read the viewer stopped on purpose: never continued by itself (false for every other kind).
+  viewerStopped: boolean;
   dim: number;
   rows: Row[];
 }
@@ -58,15 +60,18 @@ export interface FinishedRead {
   part: Part; // the frames that arrived, in order
   complete: boolean; // the tab went through every planned frame
   sent: number; // how many frames the tab sent
+  byViewer: boolean; // the viewer stopped it (Skip, Esc, a player key, play)
 }
 export interface Merged {
   kind: "partial" | "full";
   readUntil: number;
+  viewerStopped: boolean;
   part: Part;
 }
 
 // What a finished full-detail read leaves saved, or null when it adds nothing to what is saved. "full" only for a
-// read that went through to the end and arrived whole, from 0:00 or joined to the partial read it continued.
+// read that went through to the end and arrived whole, from 0:00 or joined to the partial read it continued. A
+// partial result remembers whether the viewer stopped it; lost frames or any other stop count as not.
 export function mergeRead(existing: Entry | null, read: FinishedRead, dim: number): Merged | null {
   if (existing?.kind === "full") return null; // a full read is never replaced
   let base = EMPTY; // full detail from 0:00 that this read continues
@@ -81,23 +86,24 @@ export function mergeRead(existing: Entry | null, read: FinishedRead, dim: numbe
   const combined = concat(base, slicePart(read.part, (t) => t > last, dim), dim);
   if (combined.times.length === 0) return null;
   const readUntil = combined.times[combined.times.length - 1];
-  if (read.complete && read.part.times.length === read.sent) return { kind: "full", readUntil, part: combined };
+  if (read.complete && read.part.times.length === read.sent) return { kind: "full", readUntil, viewerStopped: false, part: combined };
   if (existing?.kind === "partial" && existing.readUntil >= readUntil) return null; // the saved one reaches further
-  return { kind: "partial", readUntil, part: mergePartial(combined, rest, dim) };
+  return { kind: "partial", readUntil, viewerStopped: read.byViewer, part: mergePartial(combined, rest, dim) };
 }
 
-function entry(kind: SavedKind, readUntil: number, part: Part, dim: number): Entry {
-  return { kind, readUntil, dim, ...part, rows: part.times.map((t) => ({ video: "this", start: t, end: t + 1, thumb: "" })) };
+function entry(kind: SavedKind, readUntil: number, part: Part, dim: number, viewerStopped = false): Entry {
+  return { kind, readUntil, viewerStopped: kind === "partial" && viewerStopped, dim, ...part, rows: part.times.map((t) => ({ video: "this", start: t, end: t + 1, thumb: "" })) };
 }
 
 // Older builds saved only "preview" and "full", without readUntil. A partial record without it cannot be continued,
-// so it is read as previews and the next search reads the video again.
+// so it is read as previews and the next search reads the video again. A partial record without viewerStopped
+// counts as stopped by something else, so it is continued.
 export function fromSaved(saved: SavedVideo): Entry {
   const part = { times: Array.from(saved.times), vectors: fp16ToFloat32(saved.vectors) };
   const last = part.times.at(-1) ?? 0;
   if (saved.kind === "full") return entry("full", last, part, saved.dim);
   if (saved.kind === "partial" && typeof saved.readUntil === "number" && saved.readUntil >= 0) {
-    return entry("partial", saved.readUntil, part, saved.dim);
+    return entry("partial", saved.readUntil, part, saved.dim, saved.viewerStopped === true);
   }
   return entry("preview", 0, part, saved.dim);
 }
@@ -154,7 +160,7 @@ export class Library {
       if (existing?.kind === "full") return existing;
       if (existing?.kind === "partial") {
         const read = slicePart(existing, (t) => t <= existing.readUntil, DIM);
-        return this.store(videoId, stamp, entry("partial", existing.readUntil, mergePartial(read, preview, DIM), DIM));
+        return this.store(videoId, stamp, entry("partial", existing.readUntil, mergePartial(read, preview, DIM), DIM, existing.viewerStopped));
       }
       return this.store(videoId, stamp, entry("preview", 0, preview, DIM));
     });
@@ -186,7 +192,7 @@ export class Library {
   }
 
   // Ends a tab's read and saves what it adds. Returns what is known about the video afterwards.
-  finishFull(videoId: string, owner: object, complete: boolean, sent: number): Promise<Entry | null> {
+  finishFull(videoId: string, owner: object, end: { complete: boolean; sent: number; byViewer: boolean }): Promise<Entry | null> {
     const reads = this.pending.get(owner);
     const p = reads?.get(videoId);
     reads?.delete(videoId);
@@ -194,10 +200,10 @@ export class Library {
     if (!p || p.stamp !== this.generation) return this.get(videoId);
     return this.serial(async () => {
       const existing = await this.get(videoId);
-      const read = { after: p.after, part: { times: p.times, vectors: flatten(p.vectors, DIM) }, complete, sent };
+      const read = { after: p.after, part: { times: p.times, vectors: flatten(p.vectors, DIM) }, ...end };
       const merged = mergeRead(existing, read, DIM);
       if (!merged) return existing;
-      return this.store(videoId, p.stamp, entry(merged.kind, merged.readUntil, merged.part, DIM));
+      return this.store(videoId, p.stamp, entry(merged.kind, merged.readUntil, merged.part, DIM, merged.viewerStopped));
     });
   }
 
@@ -232,7 +238,7 @@ export class Library {
   private async store(videoId: string, stamp: number, e: Entry): Promise<Entry | null> {
     if (stamp !== this.generation) return null;
     this.remember(videoId, e);
-    const saved: SavedVideo = { videoId, kind: e.kind, readUntil: e.readUntil, dim: e.dim, times: Float32Array.from(e.times), vectors: toFp16(e.vectors) };
+    const saved: SavedVideo = { videoId, kind: e.kind, readUntil: e.readUntil, viewerStopped: e.viewerStopped, dim: e.dim, times: Float32Array.from(e.times), vectors: toFp16(e.vectors) };
     await saveVideo(saved).catch((err: unknown) =>
       console.warn("Moments: storage refused, keeping this video for the session only", videoId, err),
     );

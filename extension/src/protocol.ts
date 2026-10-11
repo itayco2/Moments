@@ -33,17 +33,20 @@ export interface Frame {
 }
 // What the engine holds for a video: nothing, preview frames, a full-detail read that stopped early ("partial":
 // full detail from 0:00 up to `readUntil`, preview frames after it when the video has them), or a full-detail read.
+// A partial read also says whether the viewer stopped it on purpose (`viewerStopped`): such a read is never
+// continued by itself, while one stopped by a switch of video, lost frames or the engine is continued on the next
+// search.
 export type Kind = "none" | "preview" | "partial" | "full";
 
 // A full-detail read is one tab's: full-start opens it (after: null from 0:00, or the time a partial read reached),
-// full-frames carry its frames, full-end closes it with how many frames the tab sent. Only a read that went through
-// to the end and arrived whole becomes "full".
+// full-frames carry its frames, full-end closes it with how many frames the tab sent and whether the viewer stopped
+// it. Only a read that went through to the end and arrived whole becomes "full".
 export type ToEngine =
   | { type: "open"; videoId: string; duration: number; spec: string | null; autoRead: boolean }
   | { type: "search"; id: number; videoId: string; query: string }
   | { type: "full-start"; videoId: string; after: number | null }
   | { type: "full-frames"; videoId: string; frames: Frame[] }
-  | { type: "full-end"; videoId: string; complete: boolean; sent: number };
+  | { type: "full-end"; videoId: string; complete: boolean; sent: number; byViewer: boolean };
 
 export type ModelMessage = {
   type: "model";
@@ -59,6 +62,7 @@ export type StateMessage = {
   videoId: string;
   kind: Kind;
   readUntil: number;
+  viewerStopped: boolean;
   reading: "preview" | null;
   done: number;
   total: number;
@@ -71,6 +75,7 @@ export type ResultsMessage = {
   videoId: string;
   kind: Kind;
   readUntil: number;
+  viewerStopped: boolean;
   hits: Hit[];
   weak: boolean;
   failed: boolean;
@@ -116,8 +121,8 @@ export function parseToEngine(msg: unknown): ToEngine | null {
       if (m.after !== null && !isTime(m.after)) return null;
       return { type: "full-start", videoId: m.videoId, after: m.after };
     case "full-end":
-      if (typeof m.complete !== "boolean" || !isCount(m.sent)) return null;
-      return { type: "full-end", videoId: m.videoId, complete: m.complete, sent: m.sent };
+      if (typeof m.complete !== "boolean" || !isCount(m.sent) || typeof m.byViewer !== "boolean") return null;
+      return { type: "full-end", videoId: m.videoId, complete: m.complete, sent: m.sent, byViewer: m.byViewer };
     default:
       return null;
   }

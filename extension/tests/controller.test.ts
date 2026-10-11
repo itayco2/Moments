@@ -62,9 +62,9 @@ function setup(over: Partial<ControllerDeps> = {}) {
   });
   const of = <T extends ToEngine["type"]>(type: T) => sent.filter((m): m is Extract<ToEngine, { type: T }> => m.type === type);
   // The engine answers the latest search.
-  const answer = (kind: Kind, over: { readUntil?: number; hits?: typeof HITS; videoId?: string; failed?: boolean } = {}) => {
+  const answer = (kind: Kind, over: { readUntil?: number; viewerStopped?: boolean; hits?: typeof HITS; videoId?: string; failed?: boolean } = {}) => {
     const search = of("search").at(-1)!;
-    c.message({ type: "results", id: search.id, videoId: over.videoId ?? search.videoId, kind, readUntil: over.readUntil ?? 0, hits: over.hits ?? HITS, weak: false, failed: over.failed ?? false });
+    c.message({ type: "results", id: search.id, videoId: over.videoId ?? search.videoId, kind, readUntil: over.readUntil ?? 0, viewerStopped: over.viewerStopped ?? false, hits: over.hits ?? HITS, weak: false, failed: over.failed ?? false });
   };
   const frameTimesSent = () => of("full-frames").flatMap((m) => m.frames.map((f: Frame) => f.t));
   const ended = () => vi.waitFor(() => expect(of("full-end")).not.toHaveLength(0));
@@ -85,7 +85,7 @@ describe("Controller: the first search reads the video in full detail", () => {
     await t.ended();
     expect(t.of("full-start")).toEqual([{ type: "full-start", videoId: INFO.videoId, after: null }]);
     expect(t.frameTimesSent()).toEqual(Array.from({ length: 40 }, (_, i) => i));
-    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: true, sent: 40 }]);
+    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: true, sent: 40, byViewer: false }]);
     expect(t.page.video.seeks.at(-1)).toBe(30);
   });
 
@@ -130,18 +130,18 @@ describe("Controller: Skip sticks (I1)", () => {
     await startOn(t);
     t.answer("preview");
     await t.ended();
-    expect(t.of("full-end")[0]).toMatchObject({ complete: false, sent: 5 });
+    expect(t.of("full-end")[0]).toMatchObject({ complete: false, sent: 5, byViewer: true });
     expect(t.page.video.seeks.at(-1)).toBe(30);
 
-    // The engine saved it as partial; the bar asks again, quietly.
-    t.c.message({ type: "state", videoId: INFO.videoId, kind: "partial", readUntil: 4, reading: null, done: 9, total: 9, problem: null, message: "" });
+    // The engine saved it as partial, stopped by the viewer; the bar asks again, quietly.
+    t.c.message({ type: "state", videoId: INFO.videoId, kind: "partial", readUntil: 4, viewerStopped: true, reading: null, done: 9, total: 9, problem: null, message: "" });
     expect(t.of("search")).toHaveLength(2);
-    t.answer("partial", { readUntil: 4 });
+    t.answer("partial", { readUntil: 4, viewerStopped: true });
     await settle();
     expect(t.page.video.seeks.at(-1)).toBe(30); // no jump after the viewer stopped the read
 
     await t.c.search("a cat");
-    t.answer("partial", { readUntil: 4 });
+    t.answer("partial", { readUntil: 4, viewerStopped: true });
     await vi.waitFor(() => expect(t.page.video.seeks.at(-1)).toBe(12)); // the viewer's own search jumps
     expect(t.of("full-start")).toHaveLength(1);
   });
@@ -171,7 +171,7 @@ describe("Controller: switching videos mid-read (C1)", () => {
     await t.ended();
 
     expect(t.frameTimesSent()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: false, sent: 10 }]);
+    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: false, sent: 10, byViewer: false }]);
     expect(t.page.video.seeks.at(-1)).toBe(10); // the old second is not put onto the new video
     expect(t.page.video.plays).toBe(0);
   });
@@ -182,7 +182,7 @@ describe("Controller: switching videos mid-read (C1)", () => {
     await startOn(t);
     t.answer("preview");
     await t.ended();
-    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: false, sent: 6 }]);
+    expect(t.of("full-end")).toEqual([{ type: "full-end", videoId: INFO.videoId, complete: false, sent: 6, byViewer: false }]);
     expect(t.c.state).toMatchObject({ videoId: OTHER.videoId, full: null });
   });
 
@@ -303,7 +303,7 @@ describe("Controller: errors never leave the bar on Searching (I4, C3)", () => {
   it("an engine that answers a search as failed ends Searching and does not start a read", async () => {
     const t = setup();
     await startOn(t);
-    t.c.message({ type: "state", videoId: INFO.videoId, kind: "none", readUntil: 0, reading: null, done: 0, total: 0, problem: "error", message: "Error: stuck" });
+    t.c.message({ type: "state", videoId: INFO.videoId, kind: "none", readUntil: 0, viewerStopped: false, reading: null, done: 0, total: 0, problem: "error", message: "Error: stuck" });
     t.answer("none", { failed: true, hits: [] });
     await settle();
     expect(t.c.state.searching).toBe(false);
@@ -367,5 +367,59 @@ describe("Controller: errors never leave the bar on Searching (I4, C3)", () => {
     expect(t.of("open")).toHaveLength(2);
     expect(t.of("search").map((m) => m.query)).toEqual(["q"]);
     expect(t.c.state).toMatchObject({ searching: true, notice: null });
+  });
+});
+
+describe("Controller: why a read stopped decides whether it is continued (I1)", () => {
+  it("never continues a read the viewer stopped on an earlier visit: it jumps from what is saved", async () => {
+    const t = setup();
+    await startOn(t);
+    t.answer("partial", { readUntil: 12, viewerStopped: true });
+    await vi.waitFor(() => expect(t.page.video.seeks).toEqual([12]));
+    expect(t.of("full-start")).toEqual([]);
+  });
+
+  it("continues a read that lost frames on the viewer's next search, never on the bar's own repeat", async () => {
+    const t = setup();
+    await startOn(t);
+    t.answer("preview");
+    await t.ended();
+    expect(t.of("full-end")[0]).toMatchObject({ complete: true, byViewer: false });
+
+    // The engine lost a batch on the way: partial up to 0:30, not stopped by the viewer. The bar asks again by itself.
+    t.c.message({ type: "state", videoId: INFO.videoId, kind: "partial", readUntil: 30, viewerStopped: false, reading: null, done: 36, total: 36, problem: null, message: "" });
+    expect(t.of("search")).toHaveLength(2);
+    t.answer("partial", { readUntil: 30 });
+    await settle();
+    expect(t.of("full-start")).toHaveLength(1);
+
+    await t.c.search("a dog jumping");
+    t.answer("partial", { readUntil: 30 });
+    await vi.waitFor(() => expect(t.of("full-start")).toHaveLength(2));
+    expect(t.of("full-start")[1]).toMatchObject({ after: 30 });
+  });
+
+  it("after Skip before anything was read, this tab still does not read the video again", async () => {
+    const t = setup();
+    t.page.video.onSeek = (s) => s === 0 && t.c.skip();
+    await startOn(t);
+    t.answer("preview");
+    await t.ended();
+    expect(t.of("full-end")[0]).toMatchObject({ sent: 0, byViewer: true });
+
+    t.page.video.onSeek = () => undefined;
+    await t.c.search("again");
+    t.answer("preview");
+    await settle();
+    expect(t.of("full-start")).toHaveLength(1);
+  });
+
+  it("marks a read stopped by a switch of video or a dropped line as not stopped by the viewer", async () => {
+    const t = setup();
+    t.page.video.onSeek = (s) => s === 7 && t.c.disconnected();
+    await startOn(t);
+    t.answer("preview");
+    await t.ended();
+    expect(t.of("full-end")[0]).toMatchObject({ complete: false, byViewer: false });
   });
 });

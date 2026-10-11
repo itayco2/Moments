@@ -4,7 +4,7 @@
 // YouTube plays ads and the next video in the viewer's one <video>, so every read and every jump first waits for
 // the player to hold this video (no ad, YouTube's length for it) and checks again after every wait (PF27, PF28).
 import { frameTimes } from "../../../web/src/frames";
-import type { FromEngine, Kind, ModelMessage, StateMessage, ToEngine, VideoInfo } from "../protocol";
+import type { FromEngine, ModelMessage, ResultsMessage, StateMessage, ToEngine, VideoInfo } from "../protocol";
 import type { Settings } from "../settings";
 import { type Action, type BarState, initialState, type Notice, reduce } from "./bar-state";
 import { fullRead, type ReadOutcome, type Seekable } from "./full-read";
@@ -60,9 +60,10 @@ export class Controller {
   private navigating = false;
   private searchId = 0;
   private quietSearch = -1; // the search sent again after a read the viewer stopped: show its answer, do not jump
+  private autoSearch = -1; // the search the bar sent again by itself after a read was saved: it never starts a read
   private viewerStopped: string | null = null; // the video whose read the viewer stopped last
   private reading: Reading | null = null;
-  private readonly readOnce = new Set<string>(); // videos this tab does not read again by itself (I1)
+  private readonly declined = new Set<string>(); // videos whose read the viewer stopped in this tab (Skip sticks, I1)
   private lostQuery: string | null = null;
   private modelStarted = 0;
 
@@ -96,14 +97,15 @@ export class Controller {
 
   search(query: string): Promise<void> {
     this.viewerStopped = null;
-    return this.ask(query, false);
+    return this.ask(query, false, false);
   }
 
-  private async ask(query: string, quiet: boolean): Promise<void> {
+  private async ask(query: string, quiet: boolean, auto: boolean): Promise<void> {
     const info = this.info;
     if (!info || info.live) return;
     const id = ++this.searchId;
     if (quiet) this.quietSearch = id;
+    if (auto) this.autoSearch = id;
     this.dispatch({ type: "searching", query });
     try {
       await this.d.link.send({ type: "search", id, videoId: info.videoId, query });
@@ -148,7 +150,7 @@ export class Controller {
     if (m.id !== this.searchId) return;
     this.dispatch({ type: "results", query: this.state.query, hits: m.hits, weak: m.weak, kind: m.kind, readUntil: m.readUntil });
     if (m.failed) return;
-    if (this.shouldRead(m.kind)) void this.readInFull(m.kind === "partial" ? m.readUntil : null);
+    if (this.shouldRead(m)) void this.readInFull(m.kind === "partial" ? m.readUntil : null);
     else if (m.hits.length && !this.reading && m.id !== this.quietSearch) void this.jump();
   }
 
@@ -190,13 +192,17 @@ export class Controller {
     if (!moved || !this.state.query || this.reading) return;
     const quiet = this.viewerStopped === m.videoId;
     this.viewerStopped = null;
-    void this.ask(this.state.query, quiet);
+    void this.ask(this.state.query, quiet, true);
   }
 
-  private shouldRead(kind: Kind): boolean {
+  // A read starts from a search the viewer made, never from the bar's own repeat of it. It never runs again after the
+  // viewer stopped it on purpose (here, or on an earlier visit: viewerStopped). After any other stop (a switch of
+  // video, lost frames, the engine) the next search continues it from readUntil.
+  private shouldRead(m: ResultsMessage): boolean {
     const info = this.info;
-    if (!info || info.live || kind === "full" || this.reading || this.navigating) return false;
-    return !this.readOnce.has(info.videoId) && this.state.model.phase !== "error";
+    if (!info || info.live || m.kind === "full" || this.reading || this.navigating || m.id === this.autoSearch) return false;
+    if (m.kind === "partial" && m.viewerStopped) return false;
+    return !this.declined.has(info.videoId) && this.state.model.phase !== "error";
   }
 
   private readInFull(after: number | null): void {
@@ -254,13 +260,15 @@ export class Controller {
     if (this.reading === read) this.reading = null;
     if (this.state.videoId === read.videoId) this.dispatch({ type: "full", progress: null });
     if (outcome.blank) console.warn(`Moments: ${outcome.blank} frames had no picture and were skipped`);
-    // Once per video in this tab: after a read that ran, and after the viewer stopped one (Skip sticks). A read
-    // stopped by a switch of video or by the engine can run again.
-    if (read.why === "viewer" || (started && read.why === null)) this.readOnce.add(read.videoId);
-    if (read.why === "viewer") this.viewerStopped = read.videoId;
+    // The viewer stopped it on purpose: this tab does not read the video again, even when nothing was saved, and
+    // the engine keeps the reason with the partial read for later visits.
+    if (read.why === "viewer") {
+      this.declined.add(read.videoId);
+      this.viewerStopped = read.videoId;
+    }
     if (started) {
       await this.d.link
-        .send({ type: "full-end", videoId: read.videoId, complete: outcome.complete, sent: outcome.sent })
+        .send({ type: "full-end", videoId: read.videoId, complete: outcome.complete, sent: outcome.sent, byViewer: read.why === "viewer" })
         .catch((err: unknown) => console.warn("Moments: end of read not sent", err));
     } else if (read.why === null && this.state.videoId === read.videoId && this.state.hits.length) {
       void this.jump(); // the player never settled: answer from what is known

@@ -14,7 +14,7 @@ const vec = (...xs: number[]) => Float32Array.from(xs);
 const frame = (x: number) => new Float32Array(DIM).fill(x);
 // One number per frame (dim 1) keeps the merge tests readable: the vector says where the frame came from.
 const part = (times: number[], mark: number): Part => ({ times, vectors: Float32Array.from(times.map((t) => mark + t / 1000)) });
-const saved = (kind: Entry["kind"], times: number[], readUntil: number, mark: number): Entry => ({ kind, readUntil, dim: 1, rows: [], ...part(times, mark) });
+const saved = (kind: Entry["kind"], times: number[], readUntil: number, mark: number): Entry => ({ kind, readUntil, viewerStopped: false, dim: 1, rows: [], ...part(times, mark) });
 const sources = (p: Part) => Array.from(p.vectors, (v) => Math.floor(v)); // 1 = preview, 2 = an earlier read, 3 = this read
 
 describe("mergePartial", () => {
@@ -34,7 +34,7 @@ describe("mergePartial", () => {
 
 describe("mergeRead (what a finished full-detail read leaves saved)", () => {
   const preview = saved("preview", [0, 10, 20, 30], 0, 1);
-  const fresh = (times: number[], complete: boolean, sent = times.length) => ({ after: null, part: part(times, 3), complete, sent });
+  const fresh = (times: number[], complete: boolean, sent = times.length) => ({ after: null, part: part(times, 3), complete, sent, byViewer: false });
 
   it("saves a read from 0:00 that went to the end and arrived whole as full", () => {
     const merged = mergeRead(preview, fresh([0, 4, 8, 12, 16, 20, 24, 28], true), 1);
@@ -57,6 +57,13 @@ describe("mergeRead (what a finished full-detail read leaves saved)", () => {
     expect(mergeRead(preview, fresh([0, 4, 12, 16], true, 5), 1)).toMatchObject({ kind: "partial", readUntil: 16 });
   });
 
+  it("remembers a read the viewer stopped; one stopped otherwise or short of frames is not marked", () => {
+    expect(mergeRead(preview, { ...fresh([0, 4], false), byViewer: true }, 1)).toMatchObject({ kind: "partial", viewerStopped: true });
+    expect(mergeRead(preview, fresh([0, 4], false), 1)).toMatchObject({ kind: "partial", viewerStopped: false }); // a switch of video, the engine
+    expect(mergeRead(preview, fresh([0, 4, 12], true, 4), 1)).toMatchObject({ kind: "partial", viewerStopped: false }); // lost frames
+    expect(mergeRead(preview, fresh([0, 4, 8], true), 1)).toMatchObject({ kind: "full", viewerStopped: false });
+  });
+
   it("never replaces a full read", () => {
     expect(mergeRead(saved("full", [0, 1, 2], 2, 2), fresh([0, 4, 8], true), 1)).toBeNull();
     expect(mergeRead(saved("full", [0, 1, 2], 2, 2), fresh([0, 4], false), 1)).toBeNull();
@@ -77,26 +84,26 @@ describe("mergeRead (what a finished full-detail read leaves saved)", () => {
     const partial = saved("partial", [0, 4, 8, 10, 20, 30], 8, 2); // full detail to 0:08, previews after
 
     it("joins it and becomes full when it reaches the end whole", () => {
-      const merged = mergeRead(partial, { after: 8, part: part([12, 16, 20, 24, 28], 3), complete: true, sent: 5 }, 1);
+      const merged = mergeRead(partial, { after: 8, part: part([12, 16, 20, 24, 28], 3), complete: true, sent: 5, byViewer: false }, 1);
       expect(merged).toMatchObject({ kind: "full", readUntil: 28 });
       expect(merged!.part.times).toEqual([0, 4, 8, 12, 16, 20, 24, 28]);
       expect(sources(merged!.part)).toEqual([2, 2, 2, 3, 3, 3, 3, 3]);
     });
 
     it("moves readUntil on when it stops again, keeping the previews after it", () => {
-      const merged = mergeRead(partial, { after: 8, part: part([12, 16], 3), complete: false, sent: 2 }, 1);
+      const merged = mergeRead(partial, { after: 8, part: part([12, 16], 3), complete: false, sent: 2, byViewer: false }, 1);
       expect(merged).toMatchObject({ kind: "partial", readUntil: 16 });
       expect(merged!.part.times).toEqual([0, 4, 8, 12, 16, 20, 30]);
     });
 
     it("finishes a partial read whose plan had nothing left", () => {
-      const merged = mergeRead(partial, { after: 8, part: part([], 3), complete: true, sent: 0 }, 1);
+      const merged = mergeRead(partial, { after: 8, part: part([], 3), complete: true, sent: 0, byViewer: false }, 1);
       expect(merged).toMatchObject({ kind: "full", readUntil: 8 });
       expect(merged!.part.times).toEqual([0, 4, 8]);
     });
 
     it("is dropped when the read it continues is gone (Forget all, the storage cap)", () => {
-      const read = { after: 8, part: part([12, 16], 3), complete: true, sent: 2 };
+      const read = { after: 8, part: part([12, 16], 3), complete: true, sent: 2, byViewer: false };
       expect(mergeRead(null, read, 1)).toBeNull();
       expect(mergeRead(preview, read, 1)).toBeNull();
       expect(mergeRead(saved("partial", [0, 4], 4, 2), read, 1)).toBeNull();
@@ -105,8 +112,8 @@ describe("mergeRead (what a finished full-detail read leaves saved)", () => {
 });
 
 describe("fromSaved (records from older builds keep loading)", () => {
-  const record = (kind: string, readUntil?: number) =>
-    ({ videoId: VIDEO, kind, readUntil, dim: DIM, times: Float32Array.from([0, 5, 10]), vectors: new Uint16Array(3 * DIM) }) as never;
+  const record = (kind: string, readUntil?: number, viewerStopped?: boolean) =>
+    ({ videoId: VIDEO, kind, readUntil, viewerStopped, dim: DIM, times: Float32Array.from([0, 5, 10]), vectors: new Uint16Array(3 * DIM) }) as never;
 
   it("reads an old full record, which has no readUntil, as full to its last frame", () => {
     expect(fromSaved(record("full"))).toMatchObject({ kind: "full", readUntil: 10 });
@@ -120,6 +127,12 @@ describe("fromSaved (records from older builds keep loading)", () => {
     expect(fromSaved(record("partial", 5))).toMatchObject({ kind: "partial", readUntil: 5 });
     expect(fromSaved(record("partial"))).toMatchObject({ kind: "preview", readUntil: 0 });
     expect(fromSaved(record("something-new", 5))).toMatchObject({ kind: "preview" });
+  });
+
+  it("reads why a partial read stopped; a record from before the reason was kept counts as not the viewer", () => {
+    expect(fromSaved(record("partial", 5, true))).toMatchObject({ kind: "partial", viewerStopped: true });
+    expect(fromSaved(record("partial", 5))).toMatchObject({ kind: "partial", viewerStopped: false });
+    expect(fromSaved(record("full", undefined, true))).toMatchObject({ kind: "full", viewerStopped: false });
   });
 });
 
@@ -177,7 +190,7 @@ describe("Library full-detail reads", () => {
     library.addFull(VIDEO, a, [0, 2], [frame(1), frame(2)]);
     library.addFull(VIDEO, a, [4], [frame(3)]);
 
-    const done = await library.finishFull(VIDEO, a, true, 3);
+    const done = await library.finishFull(VIDEO, a, { complete: true, sent: 3, byViewer: false });
 
     expect(done?.kind).toBe("full");
     expect(lastSave()).toMatchObject({ kind: "full", readUntil: 4 });
@@ -187,7 +200,7 @@ describe("Library full-detail reads", () => {
   it("ignores frames for a read its tab never started (a batch that arrives on a new line after a reconnect)", async () => {
     const library = new Library();
     expect(library.addFull(VIDEO, a, [8, 10], [frame(1), frame(2)])).toBe(false);
-    expect(await library.finishFull(VIDEO, a, true, 2)).toBeNull();
+    expect(await library.finishFull(VIDEO, a, { complete: true, sent: 2, byViewer: false })).toBeNull();
     expect(saveVideo).not.toHaveBeenCalled();
   });
 
@@ -198,7 +211,7 @@ describe("Library full-detail reads", () => {
 
     library.dropPending(a);
 
-    expect(await library.finishFull(VIDEO, a, true, 2)).toBeNull();
+    expect(await library.finishFull(VIDEO, a, { complete: true, sent: 2, byViewer: false })).toBeNull();
     expect(saveVideo).not.toHaveBeenCalled();
   });
 
@@ -210,8 +223,8 @@ describe("Library full-detail reads", () => {
     library.addFull(VIDEO, b, [0], [frame(7)]);
     library.addFull(VIDEO, a, [4], [frame(3)]);
 
-    const first = library.finishFull(VIDEO, a, true, 3);
-    const second = library.finishFull(VIDEO, b, false, 1);
+    const first = library.finishFull(VIDEO, a, { complete: true, sent: 3, byViewer: false });
+    const second = library.finishFull(VIDEO, b, { complete: false, sent: 1, byViewer: false });
 
     expect((await first)?.kind).toBe("full");
     expect((await second)?.kind).toBe("full");
@@ -224,11 +237,11 @@ describe("Library full-detail reads", () => {
     await library.putPreview(VIDEO, library.stamp, [0, 10, 20], [frame(9), frame(9), frame(9)]);
     library.startFull(VIDEO, a, null);
     library.addFull(VIDEO, a, [0, 4], [frame(1), frame(2)]);
-    expect(await library.finishFull(VIDEO, a, false, 2)).toMatchObject({ kind: "partial", readUntil: 4, times: [0, 4, 10, 20] });
+    expect(await library.finishFull(VIDEO, a, { complete: false, sent: 2, byViewer: false })).toMatchObject({ kind: "partial", readUntil: 4, times: [0, 4, 10, 20] });
 
     library.startFull(VIDEO, b, 4);
     library.addFull(VIDEO, b, [8, 12, 16], [frame(3), frame(4), frame(5)]);
-    const done = await library.finishFull(VIDEO, b, true, 3);
+    const done = await library.finishFull(VIDEO, b, { complete: true, sent: 3, byViewer: false });
 
     expect(done).toMatchObject({ kind: "full", readUntil: 16, times: [0, 4, 8, 12, 16] });
   });
@@ -237,7 +250,7 @@ describe("Library full-detail reads", () => {
     const library = new Library();
     library.startFull(VIDEO, a, null);
     library.addFull(VIDEO, a, [0, 1], [frame(1), frame(2)]);
-    await library.finishFull(VIDEO, a, true, 2);
+    await library.finishFull(VIDEO, a, { complete: true, sent: 2, byViewer: false });
     vi.mocked(saveVideo).mockClear();
 
     const after = await library.putPreview(VIDEO, library.stamp, [0, 10, 20], [frame(9), frame(9), frame(9)]);
@@ -246,11 +259,24 @@ describe("Library full-detail reads", () => {
     expect(saveVideo).not.toHaveBeenCalled();
   });
 
+  it("saves why a read stopped, and a preview that fills in after it keeps that", async () => {
+    const library = new Library();
+    library.startFull(VIDEO, a, null);
+    library.addFull(VIDEO, a, [0, 4], [frame(1), frame(2)]);
+    await library.finishFull(VIDEO, a, { complete: false, sent: 2, byViewer: true });
+    expect(lastSave()).toMatchObject({ kind: "partial", readUntil: 4, viewerStopped: true });
+
+    const after = await library.putPreview(VIDEO, library.stamp, [0, 10, 20], [frame(9), frame(9), frame(9)]);
+
+    expect(after).toMatchObject({ kind: "partial", viewerStopped: true, times: [0, 4, 10, 20] });
+    expect(lastSave()).toMatchObject({ viewerStopped: true });
+  });
+
   it("fills in the rest of a partial read when a preview read ends after it", async () => {
     const library = new Library();
     library.startFull(VIDEO, a, null);
     library.addFull(VIDEO, a, [0, 4], [frame(1), frame(2)]);
-    await library.finishFull(VIDEO, a, false, 2);
+    await library.finishFull(VIDEO, a, { complete: false, sent: 2, byViewer: false });
 
     const after = await library.putPreview(VIDEO, library.stamp, [0, 10, 20], [frame(9), frame(9), frame(9)]);
 
@@ -266,7 +292,7 @@ describe("Library full-detail reads", () => {
     library.clear();
 
     expect(library.addFull(VIDEO, a, [4], [frame(3)])).toBe(false);
-    expect(await library.finishFull(VIDEO, a, true, 3)).toBeNull();
+    expect(await library.finishFull(VIDEO, a, { complete: true, sent: 3, byViewer: false })).toBeNull();
     expect(await library.putPreview(VIDEO, previewStamp, [0, 10], [frame(9), frame(9)])).toBeNull();
     expect(saveVideo).not.toHaveBeenCalled();
     expect(await library.get(VIDEO)).toBeNull();

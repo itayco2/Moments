@@ -8,6 +8,7 @@ export interface SavedVideo {
   videoId: string;
   kind: "preview" | "partial" | "full";
   readUntil?: number;
+  viewerStopped?: boolean; // partial reads only; missing in older records, which count as not stopped by the viewer
   dim: number;
   times: Float32Array;
   vectors: Uint16Array;

@@ -10,11 +10,12 @@ describe("parseToEngine", () => {
     expect(parseToEngine({ type: "full-frames", videoId: "dQw4w9WgXcQ", frames: [{ t: 4, jpeg }] })).toMatchObject({ type: "full-frames" });
     expect(parseToEngine({ type: "full-start", videoId: "dQw4w9WgXcQ", after: null })).toEqual({ type: "full-start", videoId: "dQw4w9WgXcQ", after: null });
     expect(parseToEngine({ type: "full-start", videoId: "dQw4w9WgXcQ", after: 130 })).toMatchObject({ after: 130 });
-    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: false, sent: 12 })).toEqual({
+    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: false, sent: 12, byViewer: true })).toEqual({
       type: "full-end",
       videoId: "dQw4w9WgXcQ",
       complete: false,
       sent: 12,
+      byViewer: true,
     });
   });
 
@@ -23,9 +24,11 @@ describe("parseToEngine", () => {
     expect(parseToEngine({ type: "full-start", videoId: "dQw4w9WgXcQ", after: -1 })).toBeNull();
     expect(parseToEngine({ type: "full-start", videoId: "dQw4w9WgXcQ", after: "0" })).toBeNull();
     expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true })).toBeNull();
-    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: 1.5 })).toBeNull();
-    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: -1 })).toBeNull();
-    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: MAX_READ_FRAMES + 1 })).toBeNull();
+    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: 1 })).toBeNull();
+    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: 1, byViewer: "yes" })).toBeNull();
+    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: 1.5, byViewer: false })).toBeNull();
+    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: -1, byViewer: false })).toBeNull();
+    expect(parseToEngine({ type: "full-end", videoId: "dQw4w9WgXcQ", complete: true, sent: MAX_READ_FRAMES + 1, byViewer: false })).toBeNull();
   });
 
   it("refuses malformed or oversized messages", () => {

@@ -16,14 +16,17 @@ nothing about the viewer or the video leaves it. v1 is YouTube only, published o
    player, steps it through the video under an overlay that shows the frames being read ("Reading in full
    detail, 2:10 of 10:00"), then returns to the same second and play state. Skip (or Esc) stops it and keeps
    what was read. It happens once per video; the result is saved. (As built: a stopped read is saved as
-   partial, up to the second it reached, with preview frames after it; that tab does not read the video again by
-   itself, and a later visit's first search continues from that second, never from 0:00.)
+   partial, up to the second it reached, with preview frames after it, together with why it stopped. One the viewer
+   stopped (Skip, Esc, a player key, play) is never read again, also on later visits; the previews keep covering
+   the rest. One stopped by a switch of video, lost frames or an engine error is continued from that second on the
+   viewer's next search, never from 0:00.)
 6. Search works like Ctrl+F: Enter jumps to the best moment and plays; the bar shows "2 of 6" with arrows;
    Enter and Shift+Enter step through matches; every match is a mark on YouTube's progress bar, the current one
    highlighted. Esc clears.
 7. When nothing matches well the bar says "No clear match, closest moments:" instead of pretending.
 8. Alt+M focuses the bar from anywhere on the page (changeable in chrome://extensions/shortcuts). As built, in
-   fullscreen the bar is not visible and Alt+M still moves the keyboard focus to it; leave fullscreen first.
+   fullscreen the bar under the player is not visible, so Alt+M leaves YouTube's keys alone there (it focuses the
+   bar only when the bar floats on the fullscreen player).
 9. The toolbar icon opens a small popup: background reading on or off, saved space used with "Forget all", and
    the model's status.
 
@@ -118,8 +121,8 @@ Accurate:
 | the GPU is lost or stuck (driver reset, PF26) | the model restarts and the batch is sent again; the bar says "restarting"; a second failure shows the reason and Try again, and nothing waits forever |
 | the engine cannot be reached, or its line drops | the bar never stays on "Searching": it shows the reason with Try again, or reconnects and sends the lost search again; after an extension update it says to reload the page |
 | an ad plays | nothing pauses or seeks the ad; reads and jumps wait until the ad ends ("Reads after the ad", "Jumps after the ad"); a read uses YouTube's length for the video and is refused if the player's length is more than 2 s off |
-| the viewer acts during a full read (play, a player key such as a seek, Skip, Esc, a step to another match) | the read stops at once, keeps what it has (saved as partial), and the player is restored |
-| the viewer switches videos during a read | the read stops and saves what it read for the old video; nothing from it shows on the new video and the player is not moved |
+| the viewer acts during a full read (play, a player key such as a seek, Skip, Esc, a step to another match) | the read stops at once, keeps what it has (saved as partial, stopped by the viewer, never continued), and the player is restored |
+| the viewer switches videos during a read | the read stops and saves what it read for the old video (continued from there on the next search of it); nothing from it shows on the new video and the player is not moved |
 | several YouTube tabs | one engine, one queue, the most recently opened video first (as built; not the visible tab) |
 | YouTube changes its page | the bar falls back to a floating button on the player; if the marks cannot attach, the result list still works |
 | YouTube changes the preview format | the spec is validated before use (numbers, URL, level names and signatures); a spec that fails counts as no preview frames, so the bar says there are none and the full-detail read still works on search (as built; no separate "something changed" message) |

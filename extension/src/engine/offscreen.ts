@@ -32,6 +32,7 @@ const blank = (videoId: string, patch: Partial<StateMessage> = {}): StateMessage
   videoId,
   kind: "none",
   readUntil: 0,
+  viewerStopped: false,
   reading: null,
   done: 0,
   total: 0,
@@ -115,7 +116,7 @@ async function handle(port: Port, m: ToEngine): Promise<void> {
       const query = await model.use((e) => e.embedText(m.query));
       const found = await library.get(m.videoId);
       const answer = found ? library.find(found, query) : { hits: [], weak: false };
-      send(port, { type: "results", id: m.id, videoId: m.videoId, kind: found?.kind ?? "none", readUntil: found?.readUntil ?? 0, ...answer, failed: false });
+      send(port, { type: "results", id: m.id, videoId: m.videoId, kind: found?.kind ?? "none", readUntil: found?.readUntil ?? 0, viewerStopped: found?.viewerStopped ?? false, ...answer, failed: false });
       return;
     }
     case "full-start":
@@ -129,7 +130,7 @@ async function handle(port: Port, m: ToEngine): Promise<void> {
       return;
     }
     case "full-end":
-      send(port, described(m.videoId, await library.finishFull(m.videoId, port, m.complete, m.sent)));
+      send(port, described(m.videoId, await library.finishFull(m.videoId, port, { complete: m.complete, sent: m.sent, byViewer: m.byViewer })));
       return;
   }
 }
