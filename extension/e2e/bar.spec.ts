@@ -2,7 +2,12 @@ import { expect, test } from "@playwright/test";
 import { launchExtension } from "./helpers";
 
 test("the bar appears under the player, reads previews, finds a moment and marks it", async () => {
-  const { context } = await launchExtension();
+  const { context, extensionId } = await launchExtension();
+  // Start from nothing saved: the profile is shared, and an earlier full read would answer "full" at once.
+  const setup = await context.newPage();
+  await setup.goto(`chrome-extension://${extensionId}/popup.html`);
+  expect(await setup.evaluate(() => chrome.runtime.sendMessage({ type: "forget-all" }))).toEqual({ ok: true });
+  await setup.close();
   const page = await context.newPage();
   await page.goto("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   const host = page.locator("moments-bar");
