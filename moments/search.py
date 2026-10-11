@@ -15,9 +15,10 @@ if TYPE_CHECKING:
 # A moment grows from its best window through time-adjacent neighbours (gap <= MERGE_GAP_S) whose score
 # stays within RUN_MARGIN_FRACTION of the way from the peak down to the median score; the moment and
 # HIDE_FRAMES of that video's frames on each side are then hidden from later results. Counted in frames: 16 s
-# hid half of a 1-minute game clip sampled every second (PF21), and is still what 4 s spacing gets. A long shot
-# shows up once, and one continuous video still yields several moments (PF06, PF10, PF11). The margin is relative: a shot's scores drift more for some
-# queries. Chosen by scripts/sweep_merge.py on the demo index: first-place accuracy was the same for every
+# hid half of a 1-minute game clip sampled every second (PF21), and is still what 4 s spacing gets. A long
+# shot shows up once, and one continuous video still yields several moments (PF06, PF10, PF11). The margin
+# is relative: a shot's scores drift more for some queries. Chosen by scripts/sweep_merge.py on the demo
+# index: first-place accuracy was the same for every
 # setting tried; 0.4 with 16 s gave the best top-5 (0.94) and the fewest repeats (9 of 36 example results).
 MERGE_GAP_S = 4.0
 RUN_MARGIN_FRACTION = 0.4
