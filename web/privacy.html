@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moments privacy</title>
+<style>
+  body { margin: 0; background: #f7f6f3; color: #16161a; font: 16px/1.6 Geist, ui-sans-serif, system-ui, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 48px 20px; }
+  h1 { font-size: 32px; letter-spacing: -0.02em; } h2 { font-size: 20px; margin-top: 32px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Moments privacy</h1>
+  <p>Moments (the website and the Chrome extension "Moments: search YouTube by what you see") runs its AI model on your own computer. It has no servers that receive your data, no accounts, no analytics and no ads.</p>
+  <h2>What the extension reads</h2>
+  <p>On YouTube video pages it reads the video's id, length and YouTube's own preview images, and, when you search a video for the first time, the frames of the video in your player. It turns them into numbers on your computer.</p>
+  <h2>What it stores</h2>
+  <p>Those numbers, per video, in your browser (at most 200 MB, oldest dropped first), your background-reading setting, and the AI model files. "Forget saved videos" in the extension's menu deletes the numbers.</p>
+  <h2>What leaves your computer</h2>
+  <p>Nothing about you or your videos. The extension downloads the AI model once (from moments-video.vercel.app, or Hugging Face as a backup) and YouTube's preview images from YouTube. These are ordinary downloads that do not include anything you searched or watched.</p>
+  <h2>Contact</h2>
+  <p>Questions: open an issue at <a href="https://github.com/itayco2/Moments/issues">github.com/itayco2/Moments</a>.</p>
+</main>
+</body>
+</html>
