@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.pw-profile/
+test-results/
+playwright-report/
+*.zip

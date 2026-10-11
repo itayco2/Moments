@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Moments: search YouTube by what you see",
+  "short_name": "Moments",
+  "version": "1.0.0",
+  "description": "Type what you want to see and jump to that second of any YouTube video. The AI runs on your computer.",
+  "minimum_chrome_version": "124",
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "action": { "default_popup": "popup.html", "default_icon": { "16": "icons/16.png", "32": "icons/32.png" } },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["offscreen", "storage", "alarms"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://i.ytimg.com/*",
+    "https://moments-video.vercel.app/*",
+    "https://huggingface.co/*",
+    "https://*.hf.co/*"
+  ],
+  "content_security_policy": { "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'" }
+}
