@@ -107,7 +107,7 @@ export class Controller {
 
   private async ask(query: string, quiet: boolean, auto: boolean): Promise<void> {
     const info = this.info;
-    if (!info || info.live) return;
+    if (!info || info.live || this.state.model.phase === "unsupported") return; // the bar says why
     const id = ++this.searchId;
     if (quiet) this.quietSearch = id;
     if (auto) this.autoSearch = id;
@@ -209,7 +209,7 @@ export class Controller {
     if (!info || info.live || m.kind === "full" || this.reading || this.navigating || m.id === this.autoSearch) return false;
     if (m.kind === "partial" && m.viewerStopped) return false;
     if (this.declined.has(info.videoId) || this.playerTrouble.has(info.videoId)) return false;
-    return this.state.model.phase !== "error";
+    return this.state.model.phase !== "error" && this.state.model.phase !== "unsupported";
   }
 
   private readInFull(after: number | null): void {

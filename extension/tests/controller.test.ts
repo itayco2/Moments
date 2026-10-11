@@ -495,3 +495,15 @@ describe("Controller: previews cover what a stopped read did not reach (PF32)", 
     expect(t.page.video.seeks).toEqual([]);
   });
 });
+
+describe("Controller: no WebGPU (item 4)", () => {
+  it("sends no search and starts no read when the engine says Moments cannot run here", async () => {
+    const t = setup();
+    t.c.video(INFO);
+    await settle();
+    t.c.message({ type: "model", phase: "unsupported", loaded: 0, total: 0, device: null, message: "this browser offers no WebGPU" });
+    await t.c.search("a dog");
+    expect(t.of("search")).toEqual([]);
+    expect(t.c.state.searching).toBe(false);
+  });
+});

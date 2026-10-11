@@ -1,4 +1,5 @@
 import { count, megabytes } from "../../../web/src/format";
+import { NEEDS_WEBGPU } from "../content/bar-state";
 import type { ModelMessage } from "../protocol";
 import { readSettings, writeSettings } from "../settings";
 import { CAP_BYTES } from "../store-policy";
@@ -27,7 +28,7 @@ function modelText(s: Stats): string {
   if (s.phase === "error") return `The AI model could not load: ${s.message}`;
   if (s.phase === "loading") return "The AI model is loading.";
   if (s.phase === "restarting") return `The AI model stopped (${s.message}) and is restarting.`;
-  if (s.phase === "ready" && s.device === "wasm") return "The AI model is ready, running on your CPU (slower): videos are read when you search them.";
+  if (s.phase === "unsupported") return NEEDS_WEBGPU;
   if (s.phase === "ready") return "The AI model is ready, running on your GPU.";
   return "The AI model loads when you open a YouTube video.";
 }

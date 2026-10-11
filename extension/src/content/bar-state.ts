@@ -103,12 +103,34 @@ export const canRetry = (s: BarState): boolean =>
   !s.full && (s.notice ? s.notice.kind === "failed" : s.model.phase === "error" || s.problem === "error");
 
 export const LIVE = "This is a live stream. Moments can search it once the stream has ended.";
-export const ON_CPU = "No graphics acceleration here, so Moments runs on the CPU (slower) and reads a video when you search it.";
+export const NEEDS_WEBGPU =
+  "Moments needs WebGPU: a recent Chrome, Edge or Brave on a computer with a graphics card. This browser does not offer it, so Moments cannot run here.";
+
+// Why the model stopped, in plain words: a driver reset (a lost GPU device, or the runtime's bare error number that
+// comes with one, PF26) or no answer in time. Anything else is shown as it is.
+type Cause = "driver" | "silent" | "other";
+const DRIVER = /GPU was reset|device (was )?lost|DXGI|DEVICE_HUNG|internal error \d+|WebGPU device/i;
+export const causeOf = (message: string): Cause => (DRIVER.test(message) ? "driver" : /no answer for/i.test(message) ? "silent" : "other");
+
+export function restartText(message: string): string {
+  const cause = causeOf(message);
+  if (cause === "driver") return "The graphics driver reset, so the AI model is restarting. This can take a minute.";
+  if (cause === "silent") return "The AI model stopped answering, so it is restarting. This can take a minute.";
+  return "The AI model stopped, so it is restarting. This can take a minute.";
+}
+
+export function modelErrorText(message: string, loadedBefore: boolean): string {
+  const cause = causeOf(message);
+  if (cause === "driver") return loadedBefore ? "The graphics driver reset and the AI model could not start again." : "The AI model could not load: the graphics driver reset.";
+  if (cause === "silent") return loadedBefore ? "The AI model stopped answering." : "The AI model could not load: it stopped answering.";
+  return `The AI model ${loadedBefore ? "stopped" : "could not load"}: ${message}`;
+}
 
 function trouble(s: BarState): string | null {
   if (s.notice?.kind === "updated") return s.notice.text; // nothing else works until the page is reloaded
+  if (s.model.phase === "unsupported") return NEEDS_WEBGPU;
   if (s.live) return LIVE;
-  if (s.model.phase === "error") return `The AI model ${s.model.device ? "stopped" : "could not load"}: ${s.model.message}`;
+  if (s.model.phase === "error") return modelErrorText(s.model.message, s.model.device !== null);
   return null;
 }
 
@@ -116,7 +138,7 @@ function busy(s: BarState, elapsedS: number, duration: number): string | null {
   if (s.waitingForAd === "jump") return "Jumps after the ad.";
   if (s.waitingForAd === "read") return "Reads after the ad.";
   if (s.full) return `Reading in full detail: ${clock((s.full.done / Math.max(s.full.total, 1)) * duration)} of ${clock(duration)}. Esc stops.`;
-  if (s.model.phase === "restarting") return `The AI model stopped (${s.model.message}) and is restarting. This can take a minute.`;
+  if (s.model.phase === "restarting") return restartText(s.model.message);
   if (s.model.phase === "loading") return downloadStatus(s.model.loaded, s.model.total, elapsedS);
   if (s.preview) return `Reading this video: ${s.preview.done} of ${s.preview.total} moments`;
   return null;
@@ -127,7 +149,6 @@ function known(s: BarState): string {
   if (s.kind === "preview") return "Quick results from preview frames. Your first search reads the video in full detail, once.";
   if (s.kind === "partial") return `Read in full detail up to ${clock(s.readUntil)}. Enter jumps to the next match.`;
   if (s.kind === "full") return "Read in full detail. Enter jumps to the next match.";
-  if (s.model.device === "wasm") return ON_CPU;
   return "Describe a moment in this video and press Enter.";
 }
 

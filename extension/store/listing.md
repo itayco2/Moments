@@ -17,6 +17,8 @@ What to expect the first time:
 
 Private by design: the AI runs on your computer and nothing you type leaves it. The only downloads are the AI model and YouTube's preview images of the video you are watching (sent to YouTube without your cookies). No account, no servers of ours, no ads, free and open source (github.com/itayco2/Moments).
 
+Needs WebGPU: a recent Chrome, Edge or Brave on a computer with a graphics card.
+
 Keys: Enter jumps to the next match, Shift+Enter to the previous one, Esc clears. Alt+M searches the video you are watching.
 
 Single purpose: search inside the YouTube video you are watching by describing what is on screen.

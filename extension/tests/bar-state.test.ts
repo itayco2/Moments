@@ -1,6 +1,6 @@
 // extension/tests/bar-state.test.ts
 import { describe, expect, it } from "vitest";
-import { type Action, canRetry, countText, initialState, LIVE, ON_CPU, reduce, statusLine } from "../src/content/bar-state";
+import { type Action, canRetry, countText, initialState, LIVE, NEEDS_WEBGPU, reduce, restartText, statusLine } from "../src/content/bar-state";
 
 const hits = [
   { start: 10, end: 11, score: 0.8 },
@@ -130,13 +130,15 @@ describe("statusLine", () => {
     expect(statusLine(run({ type: "video", videoId: "dQw4w9WgXcQ", live: true }, engine({ problem: "no-previews" })), 0, 0)).toBe(LIVE);
   });
 
-  it("says the model runs on the CPU, slower, and that videos are read on search (I5)", () => {
-    expect(statusLine(run(model("ready", { device: "wasm" }), engine()), 0, 100)).toBe(ON_CPU);
+  it("says plainly that Moments needs WebGPU, above everything else, with no Try again", () => {
+    const s = run(model("unsupported", { message: "this browser offers no WebGPU" }), engine({ kind: "preview" }), { type: "searching", query: "q" });
+    expect(statusLine(s, 0, 100)).toBe(NEEDS_WEBGPU);
+    expect(canRetry(s)).toBe(false);
   });
 
   it("says when the model restarts and when it stopped for good, with Try again (C3)", () => {
-    const restarting = run(model("ready", { device: "webgpu" }), model("restarting", { message: "the GPU was reset" }));
-    expect(statusLine(restarting, 0, 100)).toBe("The AI model stopped (the GPU was reset) and is restarting. This can take a minute.");
+    const restarting = run(model("ready", { device: "webgpu" }), model("restarting", { message: "the GPU was reset: DXGI_ERROR_DEVICE_HUNG" }));
+    expect(statusLine(restarting, 0, 100)).toBe("The graphics driver reset, so the AI model is restarting. This can take a minute.");
     expect(canRetry(restarting)).toBe(false);
     const failed = reduce(restarting, model("error", { message: "failed twice" }));
     expect(statusLine(failed, 0, 100)).toBe("The AI model stopped: failed twice");
@@ -145,7 +147,30 @@ describe("statusLine", () => {
   });
 
   it("uses plain keyboard punctuation only", () => {
-    const lines = [LIVE, ON_CPU, statusLine(run(engine({ kind: "partial", readUntil: 5 })), 0, 10)];
+    const lines = [LIVE, NEEDS_WEBGPU, restartText("x"), statusLine(run(engine({ kind: "partial", readUntil: 5 })), 0, 10)];
     for (const line of lines) expect(line).not.toMatch(/[–—…]/);
+  });
+});
+
+describe("restart and failure wording (plain, no raw numbers or nested brackets)", () => {
+  it("names a driver reset for a lost device and for the runtime's bare error number", () => {
+    for (const message of [
+      "the GPU was reset: ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)",
+      "the AI runtime failed (internal error 9950264)",
+      "the AI model failed twice, the second time after a restart: the GPU was reset: device lost",
+    ]) {
+      expect(restartText(message)).toBe("The graphics driver reset, so the AI model is restarting. This can take a minute.");
+    }
+  });
+
+  it("names a model that stopped answering, and keeps other reasons out of the restart line", () => {
+    expect(restartText("no answer for 60 s")).toBe("The AI model stopped answering, so it is restarting. This can take a minute.");
+    expect(restartText("something else")).toBe("The AI model stopped, so it is restarting. This can take a minute.");
+  });
+
+  it("says a driver reset plainly when the model could not start again", () => {
+    const s = run(model("ready", { device: "webgpu" }), model("error", { message: "the AI model failed twice, the second time after a restart: the AI runtime failed (internal error 9950264)" }));
+    expect(statusLine(s, 0, 100)).toBe("The graphics driver reset and the AI model could not start again.");
+    expect(statusLine(run(model("error", { message: "the AI runtime failed (internal error 9950264)" })), 0, 100)).toBe("The AI model could not load: the graphics driver reset.");
   });
 });

@@ -32,10 +32,11 @@ nothing about you or the video leaves it. It is not on the Chrome Web Store: you
 
 Then open any YouTube video; the Moments bar sits under the player.
 
-- **First use** downloads the AI model once (about 400 MB). The browser keeps it for next time.
+- **First use** downloads the AI model once (about 370 MB, the number the bar shows). The browser keeps it for next time.
 - **The first search** reads the video in full detail: the player pauses and steps through the video. Skip or Esc stops it.
 - **YouTube tabs that were open before you installed** need a reload.
-- **Needs** Chrome 124 or newer (or Edge or Brave) with WebGPU for full speed; it also runs on the CPU, slower.
+- **Needs WebGPU:** Chrome 124 or newer (or Edge or Brave) on a computer with a graphics card. Without WebGPU the bar says so
+  and nothing is downloaded: the model cannot run on the CPU.
 - **Privacy:** [moments-video.vercel.app/privacy.html](https://moments-video.vercel.app/privacy.html).
 - **Build from source:** `cd extension && npm ci && npm run build`, then load `extension/dist`.
 

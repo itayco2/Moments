@@ -119,7 +119,7 @@ Accurate:
 | no preview frames (brand-new upload, some Shorts) | preview read skipped; the full-detail read still works on search |
 | a live stream | nothing is read; the bar says it can be searched once the stream has ended |
 | only 160x90 previews | used; the full-detail read upgrades them |
-| no WebGPU | runs on the CPU and says so; background reading off |
+| no WebGPU | as built: the bar and the popup say Moments needs WebGPU (a recent Chrome, Edge or Brave on a computer with a graphics card) and nothing is downloaded or loaded; the runtime has no CPU implementation of the 4-bit text model ("GatherBlockQuantized") |
 | model download fails | retries, falls back to Hugging Face, then a Try again button |
 | the GPU is lost or stuck (driver reset, PF26) | the model restarts and the batch is sent again; the bar says "restarting"; a second failure shows the reason and Try again, and nothing waits forever |
 | the engine cannot be reached, or its line drops | the bar never stays on "Searching": it shows the reason with Try again, or reconnects and sends the lost search again; after an extension update it says to reload the page |

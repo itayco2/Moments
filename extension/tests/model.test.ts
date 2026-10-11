@@ -28,12 +28,20 @@ class FakeEmbedder implements EmbedderLike {
   }
 }
 
-function host() {
+function host(webGpu = true) {
   const fake = new FakeEmbedder();
   const heard: ModelMessage[] = [];
-  const model = new ModelHost(() => fake, (m) => heard.push(m));
+  const created = { count: 0 };
+  const model = new ModelHost(
+    () => {
+      created.count++;
+      return fake;
+    },
+    (m) => heard.push(m),
+    async () => webGpu,
+  );
   const phases = () => heard.map((m) => m.phase);
-  return { fake, model, heard, phases };
+  return { fake, model, heard, phases, created };
 }
 
 describe("ModelHost", () => {
@@ -46,19 +54,35 @@ describe("ModelHost", () => {
     expect(model.state).toMatchObject({ phase: "ready", device: "webgpu" });
   });
 
-  it("says when the model restarts, and ready again on the device it now runs on once a call answers", async () => {
+  it("says when the model restarts, and ready again once a call answers", async () => {
     const { fake, model, heard } = host();
     await model.ensure();
     fake.images = async () => {
       fake.onRestart("the GPU was reset: device hung");
-      fake.device = "wasm"; // after a driver reset the GPU can be gone for good
       return [new Float32Array(1)];
     };
 
     await model.use((e) => e.embedImages([]));
 
     expect(heard.at(-2)).toMatchObject({ phase: "restarting", message: "the GPU was reset: device hung" });
-    expect(heard.at(-1)).toMatchObject({ phase: "ready", device: "wasm", message: "" });
+    expect(heard.at(-1)).toMatchObject({ phase: "ready", device: "webgpu", message: "" });
+  });
+
+  it("without WebGPU loads nothing and tells every tab Moments cannot run here (item 4)", async () => {
+    const { model, created, phases } = host(false);
+    expect(await model.checkSupport()).toBe(false);
+    await expect(model.ensure()).rejects.toThrow(/no WebGPU/);
+    await expect(model.use((e) => e.embedText("q"))).rejects.toThrow(/no WebGPU/);
+    expect(created.count).toBe(0);
+    expect(model.state.phase).toBe("unsupported");
+    expect(phases()).toEqual(["unsupported"]);
+  });
+
+  it("refuses a model the runtime put on the CPU, where its 4-bit text half cannot run", async () => {
+    const { fake, model } = host();
+    fake.device = "wasm";
+    await expect(model.ensure()).rejects.toThrow(/no WebGPU/);
+    expect(model.state).toMatchObject({ phase: "unsupported", device: "wasm" });
   });
 
   it("rejects a call that failed for good and says so; the next call needs no new load", async () => {

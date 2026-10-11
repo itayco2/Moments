@@ -69,7 +69,8 @@ export type ToEngine =
 export type ModelMessage = {
   type: "model";
   // "restarting": the model stopped (a lost or stuck GPU) and is being started again (PREFLIGHT PF26).
-  phase: "idle" | "loading" | "ready" | "restarting" | "error";
+  // "unsupported": no WebGPU here; the model cannot run on the CPU, so nothing is loaded.
+  phase: "idle" | "loading" | "ready" | "restarting" | "error" | "unsupported";
   loaded: number;
   total: number;
   device: "webgpu" | "wasm" | null;

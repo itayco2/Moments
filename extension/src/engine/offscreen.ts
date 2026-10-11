@@ -43,9 +43,13 @@ const blank = (videoId: string, patch: Partial<StateMessage> = {}): StateMessage
 });
 const described = (videoId: string, e: Entry | null): StateMessage => (e ? knownState(videoId, e) : blank(videoId));
 
-const model = new ModelHost(() => new Embedder(), broadcast);
-// Without WebGPU the model runs on the CPU: much slower, so videos are read only when the viewer searches them.
-const onCpu = () => model.state.device === "wasm";
+// WebGPU is required (model.ts): the runtime has no CPU implementation of the 4-bit text model.
+async function webGpuAvailable(): Promise<boolean> {
+  const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+  if (!gpu) return false;
+  return (await gpu.requestAdapter().catch(() => null)) !== null;
+}
+const model = new ModelHost(() => new Embedder(), broadcast, webGpuAvailable);
 
 const reads = new Drainer(queue, {
   alive: (p) => ports.has(p),
@@ -80,10 +84,6 @@ async function previewRead(job: ReadJob<Port>, known: Entry | null): Promise<voi
   }
   const stamp = library.stamp;
   await model.ensure();
-  if (onCpu()) {
-    tell(described(videoId, known));
-    return;
-  }
   const times: number[] = [];
   const vectors: Float32Array[] = [];
   for await (const batch of readSheets(list, IMAGES_PER_BATCH)) {
@@ -101,7 +101,7 @@ async function openVideo(port: Port, m: OpenMessage): Promise<void> {
   void model.retry().catch(() => undefined);
   const known = await library.open(m.videoId);
   send(port, known ? knownState(m.videoId, known) : blank(m.videoId, { problem: m.spec ? null : "no-previews" }));
-  if (!needsPreviews(known) || !m.autoRead || !m.spec || onCpu()) return;
+  if (!needsPreviews(known) || !m.autoRead || !m.spec || model.unsupported) return;
   const dropped = queue.add({ videoId: m.videoId, duration: m.duration, spec: m.spec }, port);
   dropped?.ports.forEach((p) => send(p, blank(dropped.videoId, { problem: "error", message: TOO_MANY_WAITING })));
   void reads.drain();
@@ -185,6 +185,8 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
   return false;
 });
+
+void model.checkSupport();
 
 // Last of all, once every listener above exists: Chrome can refuse a message or port that arrives before the module
 // has finished evaluating, so the service worker waits for this before it says the engine is there.
