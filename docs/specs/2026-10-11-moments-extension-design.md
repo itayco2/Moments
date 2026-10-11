@@ -98,9 +98,12 @@ Speed:
 Light:
 - Does nothing outside YouTube watch pages. The model unloads about 10 minutes (9 to 10, checked every minute)
   after the last YouTube video tab closes.
-- Background preview reading stays on by default only if, on Itay's PC, YouTube playback drops less than 1
-  percent more frames while it runs and memory use stays reasonable. Otherwise previews are read when the
-  viewer first opens the bar.
+- Background preview reading is off by default. It would stay on only if, on Itay's PC, YouTube playback dropped
+  less than 1 percent more frames while it runs and memory use stayed reasonable. Measured on 2026-10-11 (EVAL.md):
+  playback dropped 1.9 to 2.5 percent of its frames (three runs) while a second tab was read in the background,
+  against 0 percent without reading, and in the control runs the read twice hung the GPU ("the GPU was reset"). A
+  video is read when the viewer first searches it; the popup switch turns background reading on. Memory use was not
+  measured.
 - Saved data never exceeds 200 MB (about 360 hours of long video).
 
 Accurate:

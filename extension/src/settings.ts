@@ -1,5 +1,6 @@
-// Set from the acceptance measurement (Task 11): on only if playback stutter rises less than 1 point.
-export const DEFAULT_BACKGROUND_READING = true;
+// Set from the acceptance measurement (Task 11, EVAL.md): on only if playback stutter rises less than 1 point.
+// It rose 2.5 points (1.9 in a repeat) while a second tab was read, so it is off.
+export const DEFAULT_BACKGROUND_READING = false;
 
 export interface Settings {
   backgroundReading: boolean;
