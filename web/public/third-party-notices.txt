@@ -2,7 +2,7 @@ Moments: third-party notices
 
 Moments is open source under the MIT License (see LICENSE). It is an independent project and is not affiliated with, sponsored or endorsed by YouTube, Google, Hugging Face, Microsoft or NASA. YouTube is a trademark of Google LLC.
 
-Moments includes or downloads the following third-party components. The website also serves the Geist and Geist Mono fonts (The Geist Project Authors), under the SIL Open Font License 1.1: /fonts/OFL-Geist.txt and /fonts/OFL-GeistMono.txt.
+Moments includes or downloads the following third-party components. The website also serves the Rubik, IBM Plex Sans and IBM Plex Mono fonts (their authors), under the SIL Open Font License 1.1: /fonts/OFL-rubik.txt, /fonts/OFL-ibmplexsans.txt and /fonts/OFL-ibmplexmono.txt.
 
 ==============================================================================
 @huggingface/transformers 4.3.1 (Hugging Face), bundled

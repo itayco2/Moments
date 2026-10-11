@@ -129,7 +129,7 @@ Model: [EmbeddingGemma 2](https://huggingface.co/google/embeddinggemma-2) by Goo
 uses the [ONNX build](https://huggingface.co/onnx-community/embeddinggemma-2-ONNX) with transformers.js.
 Code: MIT.
 Third-party licenses: [THIRD_PARTY_NOTICES.txt](extension/THIRD_PARTY_NOTICES.txt) (also inside the extension zip, and on
-the site at /third-party-notices.txt). The site's fonts (Geist, Geist Mono) are served by the site itself under the SIL
+the site at /third-party-notices.txt). The site's fonts (Rubik, IBM Plex Sans, IBM Plex Mono) are served by the site itself under the SIL
 Open Font License.
 
 Moments is an independent project. It is not affiliated with, sponsored or endorsed by YouTube, Google or NASA;

@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Moments: search any video by describing the moment</title>
-<meta name="description" content="Type what you want to see and jump to that second. The model runs in your browser; your videos are never uploaded.">
+<title>Moments: find one moment in hours of video</title>
+<meta name="description" content="Type what you want to see and jump to that second. Free Chrome extension for YouTube; the AI model runs in your browser and nothing is uploaded.">
+<meta name="theme-color" content="#0b0b0a">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://moments-video.vercel.app/">
 <meta property="og:title" content="Moments for YouTube: find any moment by describing it">
@@ -13,161 +14,209 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="628">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link href="/fonts/fonts.css" rel="stylesheet">
 </head>
 <body>
 <header class="site-header">
   <div class="wrap header-row">
     <a class="logo" href="#top">
-      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#16161A"></rect><path d="M6.5 18.5h15" stroke="#F7F6F3" stroke-width="2" stroke-linecap="round"></path><rect x="15" y="8.5" width="3.2" height="13" rx="1.6" fill="#9D92FA"></rect></svg>
+      <svg width="34" height="34" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#fbf6e4"></rect><path d="M6.5 18.5h15" stroke="#141413" stroke-width="2" stroke-linecap="round"></path><rect x="15" y="8.5" width="3.2" height="13" rx="1.6" fill="#8b7cf6"></rect></svg>
       <span>Moments</span>
     </a>
     <nav class="nav" aria-label="Main">
-      <a href="#extension">Extension</a>
       <a href="#how">How it works</a>
-      <a href="#measured">Accuracy</a>
-      <a class="pill-link" href="https://github.com/itayco2/Moments">View on GitHub
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"></path></svg>
-      </a>
+      <a href="#tool">Try it</a>
+      <a href="#extension">Install</a>
+      <a href="https://github.com/itayco2/Moments">GitHub</a>
     </nav>
+    <a class="btn-cta small" href="#extension">Download for Chrome</a>
   </div>
 </header>
 
-<main id="top" class="wrap">
-  <section class="hero">
-    <div class="eyebrow mono">Open source · Runs in your browser</div>
-    <h1>Search any video by describing the moment.</h1>
-    <p class="lead">Type what you want to see and jump to that second. The model runs on your own computer, so your videos are never uploaded.</p>
-    <div class="hero-actions">
-      <a class="btn-primary" id="ctaOwn" href="#tool">Search your own videos</a>
-      <span class="hint">Free. No account. Works in Chrome on a desktop.</span>
+<main id="top">
+  <section class="hero wrap">
+    <div class="hero-text">
+      <p class="eyebrow"><span class="dot" aria-hidden="true"></span>Free Chrome extension, runs on your computer</p>
+      <h1>Find one moment in hours of video</h1>
+      <p class="lead">Type what you want to see and YouTube jumps to that second. Google's EmbeddingGemma 2 runs in your browser, so nothing about you or the video is uploaded.</p>
+      <div class="hero-actions">
+        <a class="btn-cta" href="#extension">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"></path><path d="M6 11l6 6 6-6"></path><path d="M5 20h14"></path></svg>
+          Download for Chrome
+        </a>
+        <a class="btn-ghost" href="#tool">Try it on NASA footage</a>
+      </div>
+      <p class="note mono">Chrome 124 or newer, Edge or Brave. The AI model downloads once, about 400 MB.</p>
+    </div>
+    <figure class="hero-shot">
+      <div class="shot glow">
+        <img src="/img/jump-cheering.webp" width="1060" height="690" alt="The Moments bar under a YouTube player: the search people cheering in mission control jumped to 1:40:50 of NASA's landing broadcast, with the other matches marked on the progress bar">
+      </div>
+      <figcaption class="tag mono"><span class="dot" aria-hidden="true"></span>1:40:50 of a 2:11:44 broadcast</figcaption>
+    </figure>
+  </section>
+
+  <section class="numbers wrap" aria-label="Measured">
+    <div><span class="num-big">110 ms</span><span class="mono">from Enter to the jump</span></div>
+    <div><span class="num-big accent">15 of 15</span><span class="mono">right moment in the top 5, on searches written down before testing</span></div>
+    <div><span class="num-big">0 uploads</span><span class="mono">the model runs on your own GPU</span></div>
+  </section>
+
+  <section class="band" id="how">
+    <div class="wrap split">
+      <div class="split-text">
+        <p class="kicker mono">How it works</p>
+        <h2>Sorted by meaning</h2>
+        <p class="body">Moments reads a frame from every few seconds of the video. Frames that look alike land close together, so a two-hour broadcast becomes a map you can search with a sentence.</p>
+        <ol class="steps" role="list">
+          <li><span class="mono n">01</span><span><b>Every frame becomes 768 numbers</b>The model looks at the picture itself. No transcript, no tags.</span></li>
+          <li><span class="mono n">02</span><span><b>Your words become numbers too</b>Same model, same 768 numbers, so a sentence and a frame can be compared.</span></li>
+          <li><span class="mono n">03</span><span><b>The closest frame wins</b>The player jumps there, and every other match is marked on the progress bar.</span></li>
+        </ol>
+      </div>
+      <figure class="split-media">
+        <div class="shot dark"><img src="/img/galaxy.webp" width="1080" height="1000" alt="The 792 preview frames of NASA's landing broadcast placed in 3D by meaning, in groups named mission control, engineers in face masks, scientists explaining, title cards, video calls from home and rover animations"></div>
+        <figcaption class="mono">Real data: the 792 frames of NASA's landing broadcast, placed by their numbers. The groups were named by the model.</figcaption>
+      </figure>
     </div>
   </section>
 
-  <section class="tool" id="tool" aria-label="Search">
-    <div class="tool-top">
-      <div class="switch" role="group" aria-label="Library">
-        <button type="button" id="tabDemo" class="on" aria-pressed="true">NASA demo <span class="mono dim">3 h</span></button>
-        <button type="button" id="tabOwn" aria-pressed="false">Your videos</button>
-      </div>
-      <div class="model mono"><span class="dot" aria-hidden="true"></span><span id="model"></span></div>
+  <section class="wrap split reverse">
+    <figure class="split-media">
+      <div class="shot glow"><img src="/img/jump-rover.webp" width="1060" height="690" alt="The search a man next to a model of the rover jumped to 51:40 of the broadcast"></div>
+      <figcaption class="stamp">110 ms</figcaption>
+    </figure>
+    <div class="split-text">
+      <p class="kicker mono">After the first search</p>
+      <h2>Ask again. It is instant.</h2>
+      <p class="body">The first search reads the video in full detail once, then saves what it learned on your computer. Every search after that answers before you lift your finger from Enter.</p>
+      <p class="quote mono">"a man next to a model of the rover", 51:40</p>
     </div>
+  </section>
 
-    <section class="own" id="own" hidden>
-      <label class="drop" id="drop">
-        <input type="file" id="files" accept="video/*" multiple class="sr">
-        <span class="drop-icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"></path></svg>
-        </span>
-        <span class="drop-text"><b>Drop videos here</b><span>MP4 or WebM, as many as you like</span></span>
-        <span class="btn-outline">Choose files</span>
-      </label>
-      <p class="privacy">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
-        Nothing is uploaded. Your videos stay on this computer; only thumbnails and numbers are saved in this browser.
-      </p>
-      <div class="progress-card" id="indexCard" hidden>
-        <div class="own-status mono" id="ownStatus"></div>
-        <div class="bar wide" id="indexBar"><i></i></div>
+  <section class="band try">
+    <div class="wrap">
+      <div class="try-head">
+        <p class="kicker mono">No install needed</p>
+        <h2>Try it on 3 hours of NASA footage</h2>
+        <p class="body">The same model runs right here in this page. Or <a id="ctaOwn" href="#tool">search your own videos</a>: they never leave your computer.</p>
       </div>
-    </section>
 
-    <form class="search" id="form" autocomplete="off">
-      <label for="q" class="sr">Describe the moment you are looking for</label>
-      <div class="search-box">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-        <input id="q" placeholder="Describe the moment you are looking for" maxlength="200">
-        <span class="timing mono" id="timing"></span>
-      </div>
-      <button type="submit" class="btn-dark">Search</button>
-    </form>
-    <div class="chips" id="chips"></div>
-
-    <div class="stage">
-      <section class="player" aria-label="Player">
-        <div class="screen">
-          <video id="video" muted playsinline preload="metadata"></video>
-          <canvas id="preview" hidden></canvas>
-          <div class="badge mono" id="badge" hidden></div>
+      <section class="tool" id="tool" aria-label="Search">
+        <div class="tool-top">
+          <div class="switch" role="group" aria-label="Library">
+            <button type="button" id="tabDemo" class="on" aria-pressed="true">NASA demo <span class="mono dim">3 h</span></button>
+            <button type="button" id="tabOwn" aria-pressed="false">Your videos</button>
+          </div>
+          <div class="model mono"><span class="dot" aria-hidden="true"></span><span id="model"></span></div>
         </div>
-        <div class="now">
-          <div class="now-title"><b id="nowName">Nothing playing yet</b><span class="now-right"><span class="mono" id="nowAt"></span><button type="button" class="link" id="share" hidden>Copy link</button></span></div>
-          <div class="timeline"><div class="moment" id="moment" hidden></div><div class="head" id="head" hidden></div></div>
-          <div class="ticks mono"><span id="tStart"></span><span id="tEnd"></span></div>
+
+        <section class="own" id="own" hidden>
+          <label class="drop" id="drop">
+            <input type="file" id="files" accept="video/*" multiple class="sr">
+            <span class="drop-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"></path></svg>
+            </span>
+            <span class="drop-text"><b>Drop videos here</b><span>MP4 or WebM, as many as you like</span></span>
+            <span class="btn-outline">Choose files</span>
+          </label>
+          <p class="privacy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            Nothing is uploaded. Your videos stay on this computer; only thumbnails and numbers are saved in this browser.
+          </p>
+          <div class="progress-card" id="indexCard" hidden>
+            <div class="own-status mono" id="ownStatus"></div>
+            <div class="bar wide" id="indexBar"><i></i></div>
+          </div>
+        </section>
+
+        <form class="search" id="form" autocomplete="off">
+          <label for="q" class="sr">Describe the moment you are looking for</label>
+          <div class="search-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <input id="q" placeholder="Describe the moment you are looking for" maxlength="200">
+            <span class="timing mono" id="timing"></span>
+          </div>
+          <button type="submit" class="btn-search">Search</button>
+        </form>
+        <div class="chips" id="chips"></div>
+
+        <div class="stage">
+          <section class="player" aria-label="Player">
+            <div class="screen">
+              <video id="video" muted playsinline preload="metadata"></video>
+              <canvas id="preview" hidden></canvas>
+              <div class="badge mono" id="badge" hidden></div>
+            </div>
+            <div class="now">
+              <div class="now-title"><b id="nowName">Nothing playing yet</b><span class="now-right"><span class="mono" id="nowAt"></span><button type="button" class="link" id="share" hidden>Copy link</button></span></div>
+              <div class="timeline"><div class="moment" id="moment" hidden></div><div class="head" id="head" hidden></div></div>
+              <div class="ticks mono"><span id="tStart"></span><span id="tEnd"></span></div>
+            </div>
+          </section>
+          <section class="side" aria-label="Results">
+            <div class="side-head"><span>Top moments</span><span class="mono dim">best match first</span></div>
+            <div class="results" id="results"><p class="empty">Results show up here.</p></div>
+          </section>
+        </div>
+
+        <div class="tool-foot">
+          <span class="mono" id="stats"></span>
+          <button type="button" class="link" id="clear" hidden>Forget my library</button>
         </div>
       </section>
-      <section class="side" aria-label="Results">
-        <div class="side-head"><span>Top moments</span><span class="mono dim">best match first</span></div>
-        <div class="results" id="results"><p class="empty">Results show up here.</p></div>
-      </section>
-    </div>
-
-    <div class="tool-foot">
-      <span class="mono" id="stats"></span>
-      <button type="button" class="link" id="clear" hidden>Forget my library</button>
     </div>
   </section>
 
-  <section class="section ext" id="extension" aria-labelledby="extTitle">
-    <div class="ext-card">
-      <div class="ext-intro">
-        <div class="eyebrow mono">Chrome extension</div>
-        <h2 id="extTitle">Get the extension</h2>
-        <p>Moments for YouTube adds a search bar under the player. Type what you want to see and the video jumps to that second.</p>
-        <a class="btn-primary" id="extDownload" href="https://github.com/itayco2/Moments/releases/latest/download/moments-youtube.zip">Download for Chrome</a>
-        <p class="hint">Free. Chrome 124 or newer, Edge or Brave. The first use downloads the model once (about 400 MB). <a href="https://github.com/itayco2/Moments#moments-for-youtube-chrome-extension">Details</a></p>
-      </div>
-      <ol class="ext-steps" role="list">
-        <li><span class="mono num">01</span><span>Download the zip and unzip it.</span></li>
-        <li><span class="mono num">02</span><span>Open <code class="mono">chrome://extensions</code> in the address bar.</span></li>
-        <li><span class="mono num">03</span><span>Turn on Developer mode (top right).</span></li>
-        <li><span class="mono num">04</span><span>Click Load unpacked and choose the unzipped folder.</span></li>
-      </ol>
+  <section class="wrap split install" id="extension" aria-labelledby="extTitle">
+    <div class="split-text">
+      <p class="kicker mono">Free, open source</p>
+      <h2 id="extTitle">Install in one minute</h2>
+      <p class="body">Moments is not in the Chrome Web Store, so you load it yourself. Four clicks, then open any YouTube video and the bar sits under the player.</p>
+      <a class="btn-cta" id="extDownload" href="https://github.com/itayco2/Moments/releases/latest/download/moments-youtube.zip">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12"></path><path d="M6 11l6 6 6-6"></path><path d="M5 20h14"></path></svg>
+        Download for Chrome
+      </a>
+      <p class="note mono">moments-youtube.zip, 7.2 MB. <a href="https://github.com/itayco2/Moments#moments-for-youtube-chrome-extension">Details</a></p>
     </div>
+    <ol class="cards" role="list">
+      <li><span class="mono n">01</span><span>Download the zip and unzip it.</span></li>
+      <li><span class="mono n">02</span><span>Open <code class="mono">chrome://extensions</code> in the address bar.</span></li>
+      <li><span class="mono n">03</span><span>Turn on Developer mode, top right.</span></li>
+      <li><span class="mono n">04</span><span>Click Load unpacked and pick the unzipped folder.</span></li>
+    </ol>
   </section>
 
-  <section class="section" id="how">
-    <div class="section-head">
-      <div class="eyebrow mono">How it works</div>
-      <h2>Three steps, all inside your browser tab.</h2>
+  <section class="proof wrap" id="measured" aria-labelledby="proofTitle">
+    <h2 id="proofTitle">Measured before release</h2>
+    <div class="proof-grid">
+      <div><span class="num-big">15 of 15</span><p>Right moment in the top 5, on 15 searches across 3 YouTube videos, answers written down before running them.</p></div>
+      <div><span class="num-big">13 of 15</span><p>Right moment first, in the same test of the extension.</p></div>
+      <div><span class="num-big">93%</span><p>Right moment in the top 5 on 53 searches of this page's 3 hours of NASA footage.</p></div>
     </div>
-    <div class="steps">
-      <div class="step"><span class="mono num">01</span><h3>It reads the video</h3><p>One frame every 4 seconds, taken by your browser. The file never leaves your computer.</p></div>
-      <div class="step"><span class="mono num">02</span><h3>Each frame becomes 768 numbers</h3><p>Google's open EmbeddingGemma 2 describes what is in the frame, running on your own GPU.</p></div>
-      <div class="step"><span class="mono num">03</span><h3>Your words find the closest frame</h3><p>Your sentence becomes numbers the same way. The nearest moment plays from that second.</p></div>
-    </div>
-  </section>
-
-  <section class="section" id="measured">
-    <div class="section-head">
-      <div class="eyebrow mono">Measured</div>
-      <h2>Tested before it was trusted.</h2>
-    </div>
-    <div class="stats-row">
-      <div><span class="big">74%</span><span>find the right moment first</span></div>
-      <div><span class="big">93%</span><span>have it in the top five</span></div>
-      <div><span class="big">27 s</span><span>to read a 9.5-minute video</span></div>
-    </div>
-    <div class="measured-foot">
-      <p>53 searches written before the first test, on 3 hours of NASA footage, on an RTX 3070. The method and every miss are public.</p>
-      <div class="measured-actions">
-        <a href="https://github.com/itayco2/Moments/blob/main/EVAL.md">Read the evaluation</a>
-        <a class="btn-primary" id="ctaOwn2" href="#tool">Search your own videos</a>
-      </div>
+    <div class="proof-foot">
+      <a class="text-link mono" href="https://github.com/itayco2/Moments/blob/main/EVAL.md">Read the evaluation</a>
+      <a class="btn-ghost" id="ctaOwn2" href="#tool">Search your own videos</a>
     </div>
   </section>
 </main>
 
 <footer class="site-footer">
   <div class="wrap footer-row">
-    <span class="footer-name">Moments</span>
-    <span>Open source, MIT</span>
-    <span>NASA footage: public domain, not endorsed by NASA</span>
-    <span>Model: EmbeddingGemma 2 by Google DeepMind, Apache 2.0</span>
-    <span>Not affiliated with YouTube or Google</span>
-    <a href="/privacy.html">Privacy</a>
-    <a href="/third-party-notices.txt">Licenses</a>
-    <a href="https://github.com/itayco2/Moments">GitHub</a>
+    <a class="logo" href="#top">
+      <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#fbf6e4"></rect><path d="M6.5 18.5h15" stroke="#141413" stroke-width="2" stroke-linecap="round"></path><rect x="15" y="8.5" width="3.2" height="13" rx="1.6" fill="#8b7cf6"></rect></svg>
+      <span>Moments</span>
+    </a>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="/privacy.html">Privacy</a>
+      <a href="/third-party-notices.txt">Licenses</a>
+      <a href="https://github.com/itayco2/Moments">GitHub</a>
+    </nav>
+    <p class="fine">An independent open-source project, not affiliated with YouTube, Google or NASA. Footage: NASA/JPL-Caltech, public domain, not endorsed by NASA. Model: EmbeddingGemma 2 by Google DeepMind, Apache 2.0. Code: MIT.</p>
   </div>
 </footer>
 <script type="module" src="/src/main.ts"></script>

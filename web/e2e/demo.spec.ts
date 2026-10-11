@@ -31,8 +31,8 @@ test("a shared link opens on its search, and a new search rewrites the address",
   await expect(page.locator("#q")).toHaveValue("a hurricane seen from space");
   await expect(page.locator(".hit").first()).toContainText("Earth from the Space Station");
   await expect(page.locator("#share")).toBeVisible();
-  // The page opens on the tool, not the hero (24 px is the tool's scroll margin).
-  await expect.poll(() => page.locator("#tool").evaluate((t) => Math.round(t.getBoundingClientRect().top))).toBe(24);
+  // The page opens on the tool, not the hero (96 px is the tool's scroll margin, clear of the sticky header).
+  await expect.poll(() => page.locator("#tool").evaluate((t) => Math.round(t.getBoundingClientRect().top))).toBe(96);
 
   await page.getByRole("button", { name: "astronauts on the Moon" }).click();
   await expect(page.locator("#nowName")).toHaveText("Apollo 11");
