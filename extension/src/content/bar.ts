@@ -11,6 +11,10 @@ export interface BarHandlers {
   onRetry(): void;
 }
 
+export function canFocusBar(fullscreen: { contains(node: Node | null): boolean } | null, bar: Node): boolean {
+  return fullscreen === null || fullscreen.contains(bar);
+}
+
 export class Bar {
   readonly host = document.createElement("moments-bar");
   private readonly root = this.host.attachShadow({ mode: "open" });
@@ -87,8 +91,11 @@ export class Bar {
     }
   }
 
+  // Alt+M. In fullscreen the bar under the player is off screen: focusing it would send the viewer's keys (f, k,
+  // space) to a hidden field instead of YouTube, so it is left alone unless the bar is inside the fullscreen part.
   focus(): void {
     this.mount();
+    if (!canFocusBar(document.fullscreenElement, this.host)) return;
     this.input.focus();
   }
 
