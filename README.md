@@ -24,7 +24,7 @@ nothing about you or the video leaves it. It is not on the Chrome Web Store: you
 
 ### Install in one minute
 
-1. Download [moments-youtube-1.0.0.zip](https://github.com/itayco2/Moments/releases/latest/download/moments-youtube-1.0.0.zip)
+1. Download [moments-youtube.zip](https://github.com/itayco2/Moments/releases/latest/download/moments-youtube.zip)
    and unzip it.
 2. Open `chrome://extensions` (type it in the address bar).
 3. Turn on **Developer mode** (top right).

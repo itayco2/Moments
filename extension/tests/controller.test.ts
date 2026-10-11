@@ -92,6 +92,24 @@ describe("Controller: the first search reads the video in full detail", () => {
     expect(t.page.video.seeks.at(-1)).toBe(30);
   });
 
+  it("a first search with nothing read yet stays Searching through the read, never Nothing found (PF36)", async () => {
+    const t = setup();
+    await startOn(t);
+    t.answer("none", { hits: [] });
+    expect(t.c.state.searching).toBe(true);
+    await t.ended();
+    expect(t.c.state).toMatchObject({ searching: true, hits: [] }); // until the saved read is searched again
+  });
+
+  it("a read that never started lets the empty answer stand", async () => {
+    const t = setup();
+    t.page.video = new FakeVideo(9999); // the player does not hold YouTube's length: the read refuses to start
+    await startOn(t);
+    t.answer("none", { hits: [] });
+    await vi.waitFor(() => expect(t.c.state.searching).toBe(false));
+    expect(t.of("full-start")).toHaveLength(0);
+  });
+
   it("does not read a video the engine holds in full (M1: the answer's kind, not the bar's)", async () => {
     const t = setup();
     await startOn(t);

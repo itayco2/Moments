@@ -23,8 +23,9 @@ export interface Entry extends Part {
 
 export const DIM = 768;
 // "No clear match" below this top score. The website's 0.74 was set on its NASA library; right answers on YouTube
-// frames score lower, so the extension has its own line, set from the acceptance searches (EVAL.md).
-export const WEAK_MATCH_YOUTUBE = 0.74;
+// frames score lower: 0.713, 0.72 and 0.782 for three right first places on two NASA videos (2026-10-11), against a
+// median frame score near 0.64. The line sits under the right answers seen so far (PF36).
+export const WEAK_MATCH_YOUTUBE = 0.7;
 export const isWeakYouTubeMatch = (topScore: number | undefined): boolean => topScore !== undefined && topScore < WEAK_MATCH_YOUTUBE;
 // Vectors held in memory: about 100 MB for 50 hour-long videos read in full detail. Older ones reload from storage.
 export const MAX_IN_MEMORY = 50;

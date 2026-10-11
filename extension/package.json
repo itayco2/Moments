@@ -1,7 +1,7 @@
 {
   "name": "moments-extension",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Moments for YouTube: type what you want to see and jump to that second.",
   "type": "module",
   "license": "MIT",

@@ -155,7 +155,11 @@ export class Controller {
     if (m.id !== this.searchId) return;
     this.dispatch({ type: "results", query: this.state.query, hits: m.hits, weak: m.weak, kind: m.kind, readUntil: m.readUntil });
     if (m.failed) return;
-    if (this.shouldRead(m)) void this.readInFull(m.kind === "partial" ? m.readUntil : null);
+    if (this.shouldRead(m)) {
+      // Nothing to show yet: the bar says Searching (not "Nothing found.") until the read is saved and searched again.
+      if (!m.hits.length) this.dispatch({ type: "searching", query: this.state.query });
+      void this.readInFull(m.kind === "partial" ? m.readUntil : null);
+    }
     else if (m.hits.length && !this.reading && m.id !== this.quietSearch) void this.jump();
   }
 
@@ -282,6 +286,10 @@ export class Controller {
       if (!outcome.complete && read.why !== "navigation") await this.fillPreviews(read.videoId);
     } else if (read.why === null && this.state.videoId === read.videoId && this.state.hits.length) {
       void this.jump(); // the player never settled: answer from what is known
+    }
+    // Nothing was read, so no saved read will search again: the empty answer stands.
+    if ((!started || outcome.sent === 0) && this.state.searching && this.state.videoId === read.videoId) {
+      this.dispatch({ type: "results", query: this.state.query, hits: [], weak: false, kind: this.state.kind, readUntil: this.state.readUntil });
     }
   }
 
