@@ -32,7 +32,7 @@ nothing about you or the video leaves it. It is not on the Chrome Web Store: you
 
 Then open any YouTube video; the Moments bar sits under the player.
 
-- **First use** downloads the AI model once (about 370 MB, the number the bar shows). The browser keeps it for next time.
+- **First use** downloads the AI model once (about 400 MB). The browser keeps it for next time.
 - **The first search** reads the video in full detail: the player pauses and steps through the video. Skip or Esc stops it.
 - **YouTube tabs that were open before you installed** need a reload.
 - **Needs WebGPU:** Chrome 124 or newer (or Edge or Brave) on a computer with a graphics card. Without WebGPU the bar says so
@@ -91,7 +91,7 @@ npx playwright test demo
 ```
 
 Built and tested in Google Chrome on Windows, where the model runs on the GPU through WebGPU. A browser without
-WebGPU falls back to the CPU, which is much slower and was not measured.
+WebGPU tries the CPU, which was not measured and may fail: the extension measured that the 4-bit text model cannot run there.
 
 The Python engine, at the root (Python 3.12, [uv](https://docs.astral.sh/uv/), an NVIDIA GPU with 8 GB was used for
 every number here): it builds and scores indexes, and exports the demo.
