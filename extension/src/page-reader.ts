@@ -18,8 +18,8 @@ function post(): void {
 function burst(): void {
   let n = 0;
   const timer = setInterval(() => {
+    if (++n >= TRIES) clearInterval(timer); // before post(), so a throwing post() cannot keep the burst alive
     post();
-    if (++n >= TRIES) clearInterval(timer);
   }, EVERY_MS);
 }
 

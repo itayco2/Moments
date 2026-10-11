@@ -1,4 +1,5 @@
 // The one place that reads YouTube's player response. Everything YouTube gives is checked before use.
+import { VIDEO_ID } from "./protocol";
 
 export interface VideoInfo {
   videoId: string;
@@ -6,8 +7,6 @@ export interface VideoInfo {
   spec: string | null;
   live: boolean;
 }
-
-const ID = /^[A-Za-z0-9_-]{11}$/;
 
 interface PlayerResponse {
   videoDetails?: { videoId?: unknown; lengthSeconds?: unknown; isLive?: unknown };
@@ -17,7 +16,7 @@ interface PlayerResponse {
 export function videoInfo(response: unknown): VideoInfo | null {
   const r = response as PlayerResponse | null;
   const d = r?.videoDetails;
-  if (!d || typeof d.videoId !== "string" || !ID.test(d.videoId)) return null;
+  if (!d || typeof d.videoId !== "string" || !VIDEO_ID.test(d.videoId)) return null;
   const duration = Number(d.lengthSeconds);
   const raw = r?.storyboards?.playerStoryboardSpecRenderer?.spec;
   // After in-page navigation the spec can still describe the previous video for a moment.
