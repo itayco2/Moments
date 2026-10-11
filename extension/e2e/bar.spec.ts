@@ -1,0 +1,21 @@
+import { expect, test } from "@playwright/test";
+import { launchExtension } from "./helpers";
+
+test("the bar appears under the player, reads previews, finds a moment and marks it", async () => {
+  const { context } = await launchExtension();
+  const page = await context.newPage();
+  await page.goto("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  const host = page.locator("moments-bar");
+  await expect(host).toHaveAttribute("data-place", "below", { timeout: 30_000 });
+  await expect(host).toHaveAttribute("data-kind", "preview", { timeout: 180_000 });
+  const input = host.locator("input");
+  await input.fill("a man in a trench coat dancing");
+  await input.press("Enter");
+  await expect(host).not.toHaveAttribute("data-hits", "[]", { timeout: 60_000 });
+  const first = JSON.parse((await host.getAttribute("data-hits")) ?? "[]")[0] as number;
+  await expect.poll(() => page.evaluate(() => document.querySelector("video")?.currentTime ?? -1)).toBeGreaterThanOrEqual(first - 1);
+  await expect(page.locator(".ytp-progress-bar > .moments-marks > div").first()).toBeAttached();
+  await input.press("Enter");
+  await expect(host).toHaveAttribute("data-current", "1");
+  await context.close();
+});
