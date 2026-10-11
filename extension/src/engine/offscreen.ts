@@ -9,6 +9,7 @@ import { type Entry, Library } from "./library";
 import { ModelHost } from "./model";
 import { type ReadJob, ReadQueue } from "./queue";
 import { failureReplies, knownState, NOTHING } from "./replies";
+import { fromExtensionPage } from "./senders";
 import { decodeFrames, previewTiles, readSheets } from "./sheets";
 import { forgetAll, usage } from "./store";
 
@@ -168,8 +169,8 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
-  // Only the popup, an extension page and not a tab, may read the stats or forget everything.
-  if (sender.id !== chrome.runtime.id || sender.tab) return false;
+  // Only the extension's own pages may read the stats or forget everything, never a content script.
+  if (!fromExtensionPage(sender, chrome.runtime.id, chrome.runtime.getURL(""))) return false;
   if (msg?.type === "stats") {
     const answer = async () =>
       reply({ phase: model.state.phase, device: model.state.device, message: model.state.message, ...(await usage().catch(() => ({ videos: 0, bytes: 0 }))) });

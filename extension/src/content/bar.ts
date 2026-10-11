@@ -11,6 +11,15 @@ export interface BarHandlers {
   onRetry(): void;
 }
 
+export type Place = "below" | "floating";
+
+// Where the bar moves now, or null to stay: under the player as soon as that space exists (also from floating),
+// floating on the player when it is nowhere yet and only the player exists.
+export function nextPlace(current: Place | null, hasBelow: boolean, hasPlayer: boolean): Place | null {
+  if (hasBelow) return current === "below" ? null : "below";
+  return current === null && hasPlayer ? "floating" : null;
+}
+
 export function canFocusBar(fullscreen: { contains(node: Node | null): boolean } | null, bar: Node): boolean {
   return fullscreen === null || fullscreen.contains(bar);
 }
@@ -75,20 +84,16 @@ export class Bar {
     click(this.retry, () => h.onRetry());
   }
 
-  // Under the player when YouTube's layout allows; otherwise floating on the player itself.
+  // Under the player when YouTube's layout allows; otherwise floating on the player itself, until the space under
+  // the player exists (YouTube draws it after the player, and the video can be reported before that).
   mount(): void {
-    if (this.host.isConnected) return;
     const below = document.querySelector("ytd-watch-flexy #below");
-    if (below) {
-      this.host.dataset.place = "below";
-      below.prepend(this.host);
-      return;
-    }
     const player = document.getElementById("movie_player");
-    if (player) {
-      this.host.dataset.place = "floating";
-      player.append(this.host);
-    }
+    const current = this.host.isConnected ? ((this.host.dataset.place as Place | undefined) ?? null) : null;
+    const place = nextPlace(current, below !== null, player !== null);
+    if (place === "below") below?.prepend(this.host);
+    else if (place === "floating") player?.append(this.host);
+    if (place) this.host.dataset.place = place;
   }
 
   // Alt+M. In fullscreen the bar under the player is off screen: focusing it would send the viewer's keys (f, k,
@@ -100,6 +105,7 @@ export class Bar {
   }
 
   render(s: BarState, status: string): void {
+    if (this.host.dataset.place !== "below" || !this.host.isConnected) this.mount();
     this.host.dataset.theme = document.documentElement.hasAttribute("dark") ? "dark" : "light";
     this.host.dataset.kind = s.kind;
     this.host.dataset.status = status;
