@@ -14,7 +14,7 @@ import {
   TEXT_DTYPE,
   VISION_DTYPE,
 } from "./config";
-import { sizeFor, withKnownLength } from "./fetch-length";
+import { modelFetch } from "./fetch-length";
 import type { Request, Response } from "./protocol";
 
 // The live site serves its own copy of the model; a file missing there falls back to Hugging Face at the same
@@ -24,12 +24,7 @@ if (SELF_HOSTED_MODEL) {
   env.localModelPath = modelPath(import.meta.env.BASE_URL);
 }
 const PINNED = { revision: MODEL_REVISION };
-const plainFetch = env.fetch;
-env.fetch = async (input: string | URL, init?: RequestInit) => {
-  const res = await plainFetch(input, init);
-  const size = sizeFor(String(input), MODEL_FILES);
-  return size === undefined ? res : withKnownLength(res, size);
-};
+env.fetch = modelFetch(env.fetch, MODEL_FILES);
 
 type Device = "webgpu" | "wasm";
 

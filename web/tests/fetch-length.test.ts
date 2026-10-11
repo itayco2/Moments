@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sizeFor, withKnownLength } from "../src/fetch-length";
+import { modelFetch, sizeFor, withKnownLength } from "../src/fetch-length";
 
 const FILES = [
   { path: "config.json", size: 5031 },
@@ -40,5 +40,25 @@ describe("withKnownLength", () => {
     expect(await withKnownLength(missing, 5)).toBe(missing);
     const range = new Response("h", { status: 206 });
     expect(await withKnownLength(range, 5)).toBe(range);
+  });
+});
+
+describe("modelFetch", () => {
+  const calls: { url: string; init?: RequestInit }[] = [];
+  const fake = async (input: string | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    return new Response("x".repeat(5), { status: 200 });
+  };
+  const fetchModel = modelFetch(fake, [{ path: "onnx/model_q4.onnx_data", size: 5 }]);
+
+  it("keeps model files out of the browser's HTTP cache, which failed on 200 MB files and crashed the tab (PF24)", async () => {
+    const res = await fetchModel("/models/daa72c5/m/onnx/model_q4.onnx_data", { headers: { Range: "bytes=0-0" } });
+    expect(calls.at(-1)?.init).toEqual({ headers: { Range: "bytes=0-0" }, cache: "no-store" });
+    expect(res.headers.get("content-length")).toBe("5");
+  });
+
+  it("passes every other request through untouched", async () => {
+    await fetchModel("https://site.app/demo/vectors.bin");
+    expect(calls.at(-1)).toEqual({ url: "https://site.app/demo/vectors.bin", init: undefined });
   });
 });

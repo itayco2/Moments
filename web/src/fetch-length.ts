@@ -19,3 +19,16 @@ export function withKnownLength(res: Response, size: number): Response {
   headers.set("content-length", String(size));
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
+
+type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
+
+// transformers.js keeps its own copy of each model file (the Cache API), so the browser's HTTP cache is skipped
+// for them: storing a 200 MB response there failed in a fresh profile (ERR_CACHE_WRITE_FAILURE), stalled the
+// download and crashed the tab (PREFLIGHT PF24). Every other request goes through untouched.
+export function modelFetch(plain: Fetch, files: ModelFile[]): Fetch {
+  return async (input, init) => {
+    const size = sizeFor(String(input), files);
+    if (size === undefined) return plain(input, init);
+    return withKnownLength(await plain(input, { ...init, cache: "no-store" }), size);
+  };
+}
