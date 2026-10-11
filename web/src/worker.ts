@@ -39,8 +39,29 @@ let model: any = null;
 let processor: any = null;
 let hasVision = false;
 let device: Device | null = null;
+// Set once the GPU under the model is lost (a driver reset); this worker is done, the page starts a fresh one.
+let gpuLost: string | null = null;
+let watched: object | null = null;
 
 const post = (message: Response, transfer: Transferable[] = []) => self.postMessage(message, { transfer });
+
+type GpuLostInfo = { reason: string; message: string };
+// A driver reset loses the WebGPU device, and the run in flight may then never finish (PREFLIGHT PF26): tell the
+// page at once instead of leaving it waiting. The runtime publishes its device once it has made a session.
+function watchGpu(): void {
+  const gpu = (env.backends.onnx as { webgpu?: { device?: { lost?: Promise<GpuLostInfo> } } }).webgpu?.device;
+  if (!gpu?.lost || gpu === watched) return;
+  watched = gpu;
+  void gpu.lost.then((info) => {
+    if (info.reason === "destroyed") return; // released on purpose, not a failure
+    gpuLost = info.message || "the GPU device was lost";
+    post({ id: 0, kind: "lost", message: gpuLost });
+  });
+}
+
+// The runtime reports some failures as a bare number (a C++ exception it could not turn into a message).
+const errorText = (err: unknown): string =>
+  err instanceof Error ? err.message : typeof err === "number" ? `the AI runtime failed (internal error ${err})` : String(err);
 
 async function pickDevice(): Promise<Device> {
   const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
@@ -80,6 +101,7 @@ async function load(id: number, vision: boolean): Promise<void> {
   await model?.dispose?.();
   model = next;
   hasVision = vision;
+  if (device === "webgpu") watchGpu();
   post({ id, kind: "loaded", device, vision });
 }
 
@@ -106,6 +128,7 @@ async function embedImages(id: number, images: { data: Uint8ClampedArray; width:
 self.onmessage = async (event: MessageEvent<Request>) => {
   const req = event.data;
   try {
+    if (gpuLost) throw new Error(`the GPU was reset: ${gpuLost}`);
     if (req.op === "load") await load(req.id, req.vision);
     else if (!model) throw new Error("the model is not loaded yet");
     else if (req.op === "texts") await embedTexts(req.id, req.texts);
@@ -114,6 +137,6 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       await embedImages(req.id, req.images);
     }
   } catch (err) {
-    post({ id: req.id, kind: "error", message: err instanceof Error ? err.message : String(err) });
+    post({ id: req.id, kind: "error", message: errorText(err) });
   }
 };

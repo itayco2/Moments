@@ -10,4 +10,6 @@ export type Response =
   | { id: number; kind: "file-done"; file: string }
   | { id: number; kind: "loaded"; device: "webgpu" | "wasm"; vision: boolean }
   | { id: number; kind: "vectors"; vectors: Float32Array[] }
-  | { id: number; kind: "error"; message: string };
+  | { id: number; kind: "error"; message: string }
+  // Sent unasked (id 0) when the GPU under the model is lost; a run in flight may never answer (PREFLIGHT PF26).
+  | { id: 0; kind: "lost"; message: string };

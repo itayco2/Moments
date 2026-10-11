@@ -67,6 +67,10 @@ function getEmbedder(): Embedder {
   if (!embedder) {
     embedder = new Embedder();
     embedder.onProgress = showModelProgress;
+    // A lost GPU or a stuck run: say so instead of leaving the count standing still (PREFLIGHT PF26).
+    embedder.onRestart = (reason) => {
+      if (indexing) setOwnStatus(`The AI model stopped (${reason}). Restarting it and carrying on.`);
+    };
   }
   return embedder;
 }
@@ -293,6 +297,7 @@ function updateOwnPanel(): void {
 async function addFiles(files: File[]): Promise<void> {
   if (indexing || !files.length) return;
   indexing = true;
+  let failure = ""; // shown after the panel is redrawn, which would otherwise wipe it (PREFLIGHT PF26)
   try {
     if (!(embedder?.device && embedder.vision)) showWaiting(files);
     const e = await ensureModel(true);
@@ -304,13 +309,14 @@ async function addFiles(files: File[]): Promise<void> {
       else await indexFile(e, file, key, url, `${n + 1} of ${files.length}`);
     }
   } catch (err) {
-    setOwnStatus(`Could not index: ${message(err)}`);
+    failure = `Could not index: ${message(err)}. Reload the page to try again.`;
   } finally {
     clearWaiting();
     indexing = false;
     $("indexBar").hidden = true;
     stopReading();
     updateOwnPanel();
+    if (failure) setOwnStatus(failure);
   }
 }
 
@@ -394,7 +400,7 @@ async function indexFile(e: Embedder, file: File, key: string, url: string, whic
   };
   for await (const g of grabFrames(file)) {
     duration = g.duration;
-    showReading(name, g); // before the frame's pixels move to the worker
+    showReading(name, g);
     pending.push(g);
     grabbed++;
     if (pending.length === IMAGES_PER_BATCH) {
