@@ -7,22 +7,22 @@ import {
   IMAGE_TOKENS,
   MODEL_FILES,
   MODEL_ID,
+  MODEL_BASE,
   MODEL_REVISION,
-  modelPath,
+  ORT_BASE,
   QUERY_PREFIX,
-  SELF_HOSTED_MODEL,
   TEXT_DTYPE,
   VISION_DTYPE,
 } from "./config";
 import { modelFetch } from "./fetch-length";
 import type { Request, Response } from "./protocol";
 
-// The live site serves its own copy of the model; a file missing there falls back to Hugging Face at the same
-// revision (transformers.js tries the local path first, then the remote one).
-if (SELF_HOSTED_MODEL) {
+// The model comes from MODEL_BASE when set (the site's or the website's copy); a file missing there falls back to Hugging Face at the same revision. The runtime comes from ORT_BASE when set.
+if (MODEL_BASE) {
   env.allowLocalModels = true;
-  env.localModelPath = modelPath(import.meta.env.BASE_URL);
+  env.localModelPath = MODEL_BASE;
 }
+if (ORT_BASE && env.backends.onnx.wasm) env.backends.onnx.wasm.wasmPaths = new URL(ORT_BASE, self.location.href).href;
 const PINNED = { revision: MODEL_REVISION };
 env.fetch = modelFetch(env.fetch, MODEL_FILES);
 

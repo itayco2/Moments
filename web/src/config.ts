@@ -12,6 +12,14 @@ export const MODEL_REVISION = model.revision;
 export const SELF_HOSTED_MODEL = import.meta.env.VITE_SELF_HOSTED_MODEL === "1";
 // Under the revision, so a file's URL never changes content and can be cached forever.
 export const modelPath = (base: string) => `${base}models/${MODEL_REVISION.slice(0, 7)}/`;
+// Where the worker loads model files from. The website serves its own copy (SELF_HOSTED_MODEL); the extension
+// points at the website's copy (VITE_MODEL_BASE). Hugging Face at the same revision is the fallback either way.
+// null means Hugging Face only.
+export const MODEL_BASE: string | null =
+  import.meta.env.VITE_MODEL_BASE || (SELF_HOSTED_MODEL ? modelPath(import.meta.env.BASE_URL) : null);
+// The ONNX runtime's own files. The extension bundles them (the Chrome Web Store allows no remote code); the
+// website lets transformers.js fetch them from its CDN. null means the CDN.
+export const ORT_BASE: string | null = import.meta.env.VITE_ORT_BASE || null;
 export const MODEL_FILES: ModelFile[] = model.files;
 // What one load reads: the text half, plus the picture half for your own videos. Known up front, so the
 // progress bar is exact from the first byte instead of growing as each file starts.
