@@ -2,8 +2,10 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { zipSync } from "fflate";
+import { assertNoRemoteCode } from "./remote-code.mjs";
 
 const dist = new URL("../dist/", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+assertNoRemoteCode(dist); // the store refuses remote code; never zip a dist/ that names a script CDN
 const { version } = JSON.parse(readFileSync(join(dist, "manifest.json"), "utf8"));
 const files = {};
 const walk = (dir) => {

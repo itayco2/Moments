@@ -2,9 +2,13 @@
 // 200 MB of vectors just to read sizes and dates.
 import { CAP_BYTES, entryBytes, evict, type StoredMeta } from "../store-policy";
 
+// Records from builds before 1.0.0's final review have no readUntil and only "preview" or "full"; the library
+// reads them as they were meant (library.ts, fromSaved).
 export interface SavedVideo {
   videoId: string;
-  kind: "preview" | "full";
+  kind: "preview" | "partial" | "full";
+  readUntil?: number;
+  viewerStopped?: boolean; // partial reads only; missing in older records, which count as not stopped by the viewer
   dim: number;
   times: Float32Array;
   vectors: Uint16Array;

@@ -1,10 +1,11 @@
 import { count, megabytes } from "../../../web/src/format";
+import type { ModelMessage } from "../protocol";
 import { readSettings, writeSettings } from "../settings";
 import { CAP_BYTES } from "../store-policy";
 
 interface Stats {
-  phase: "idle" | "loading" | "ready" | "error";
-  device: "webgpu" | "wasm" | null;
+  phase: ModelMessage["phase"];
+  device: ModelMessage["device"];
   message: string;
   videos: number;
   bytes: number;
@@ -25,7 +26,9 @@ async function stats(): Promise<Stats> {
 function modelText(s: Stats): string {
   if (s.phase === "error") return `The AI model could not load: ${s.message}`;
   if (s.phase === "loading") return "The AI model is loading.";
-  if (s.phase === "ready") return `The AI model is ready, running ${s.device === "webgpu" ? "on your GPU" : "on your CPU (slower)"}.`;
+  if (s.phase === "restarting") return `The AI model stopped (${s.message}) and is restarting.`;
+  if (s.phase === "ready" && s.device === "wasm") return "The AI model is ready, running on your CPU (slower): videos are read when you search them.";
+  if (s.phase === "ready") return "The AI model is ready, running on your GPU.";
   return "The AI model loads when you open a YouTube video.";
 }
 

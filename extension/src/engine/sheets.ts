@@ -26,10 +26,52 @@ export function previewTiles(sb: Storyboard, level: Level, duration: number): Ti
   return usableTiles(tiles(sb, level, duration));
 }
 
+// A sheet is about 50 KB; one that has not arrived in this long is not coming, and the read queue must move on.
+const SHEET_TIMEOUT_MS = 30_000;
+// Full-detail frames are 360 px on the short side (about 0.23 MP for 16:9). Anything far larger is not one of ours
+// and is refused before it is decoded: a small JPEG can claim a huge picture.
+export const MAX_FRAME_PIXELS = 2_000_000;
+const SOF_MARKERS = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+
 async function fetchBitmap(url: string): Promise<ImageBitmap> {
-  const res = await fetch(url, { credentials: "omit" });
+  const res = await fetch(url, { credentials: "omit", signal: AbortSignal.timeout(SHEET_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`preview sheet answered HTTP ${res.status}`);
   return createImageBitmap(await res.blob());
+}
+
+// The picture size a JPEG declares in its frame header, or null when the bytes are not a JPEG with one.
+export function jpegSize(b: Uint8Array): { width: number; height: number } | null {
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 4 <= b.length) {
+    if (b[i] !== 0xff) return null;
+    const marker = b[i + 1];
+    if (marker === 0xff) {
+      i += 1; // fill byte
+      continue;
+    }
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
+      i += 2; // markers without a length
+      continue;
+    }
+    if (marker === 0xd9 || marker === 0xda) return null; // the end, or image data before any frame header
+    const length = (b[i + 2] << 8) | b[i + 3];
+    if (length < 2) return null;
+    if (SOF_MARKERS.has(marker)) {
+      if (i + 9 > b.length) return null;
+      return { height: (b[i + 5] << 8) | b[i + 6], width: (b[i + 7] << 8) | b[i + 8] };
+    }
+    i += 2 + length;
+  }
+  return null;
+}
+
+// Why a full-detail frame is refused, or null when it is fine.
+export function frameProblem(bytes: Uint8Array): string | null {
+  const size = jpegSize(bytes);
+  if (!size || size.width === 0 || size.height === 0) return "a frame is not a readable JPEG";
+  if (size.width * size.height > MAX_FRAME_PIXELS) return `a frame of ${size.width}x${size.height} is larger than the full-detail read sends`;
+  return null;
 }
 
 function pixels(source: CanvasImageSource, sx: number, sy: number, w: number, h: number): ImageData {
@@ -68,8 +110,12 @@ export async function* readSheets(list: Tile[], batchSize: number): AsyncGenerat
 export async function decodeFrames(frames: Frame[]): Promise<ImageData[]> {
   return Promise.all(
     frames.map(async (f) => {
-      const bitmap = await createImageBitmap(await (await fetch(f.jpeg)).blob());
+      const blob = await (await fetch(f.jpeg)).blob();
+      const problem = frameProblem(new Uint8Array(await blob.arrayBuffer()));
+      if (problem) throw new Error(problem);
+      const bitmap = await createImageBitmap(blob);
       try {
+        if (bitmap.width * bitmap.height > MAX_FRAME_PIXELS) throw new Error("a frame decoded larger than its header said");
         return pixels(bitmap, 0, 0, bitmap.width, bitmap.height);
       } finally {
         bitmap.close();

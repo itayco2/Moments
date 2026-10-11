@@ -17,7 +17,10 @@ button { height: 32px; min-width: 32px; padding: 0 8px; border: 0; border-radius
   color: var(--ink); font: 500 16px "Roboto", "Arial", sans-serif; cursor: pointer; }
 button:hover:not(:disabled) { background: var(--line); }
 button:disabled { opacity: 0.35; cursor: default; }
-.status { font: 400 12px/1.4 "Roboto", "Arial", sans-serif; color: var(--muted); }
+.foot { display: flex; align-items: center; gap: 10px; min-height: 17px; }
+.status { flex: 1; font: 400 12px/1.4 "Roboto", "Arial", sans-serif; color: var(--muted); }
+.retry { height: 24px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 12px; }
+.retry[hidden] { display: none; }
 .line { height: 2px; border-radius: 1px; background: var(--line); overflow: hidden; }
 .line i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s ease; }
 `;

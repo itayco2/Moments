@@ -16,10 +16,15 @@
   <p>Moments (the website and the Chrome extension "Moments: search YouTube by what you see") runs its AI model on your own computer. It has no servers that receive your data, no accounts, no analytics and no ads.</p>
   <h2>What the extension reads</h2>
   <p>On YouTube video pages it reads the video's id, length and YouTube's own preview images, and, when you search a video for the first time, the frames of the video in your player. It turns them into numbers on your computer.</p>
+  <p>That first search pauses your player and steps it through the video to read its frames in full detail, then puts it back at the same second. Skip or Esc stops it at any time and keeps what was read.</p>
   <h2>What it stores</h2>
   <p>Those numbers, per video, in your browser (at most 200 MB, oldest dropped first), your background-reading setting, and the AI model files. "Forget saved videos" in the extension's menu deletes the numbers.</p>
   <h2>What leaves your computer</h2>
-  <p>Nothing about you or your videos. The extension downloads the AI model once (from moments-video.vercel.app, or Hugging Face as a backup) and YouTube's preview images from YouTube. These are ordinary downloads that do not include anything you searched or watched.</p>
+  <p>Nothing you type into the search bar, and nothing about you. The extension makes two kinds of downloads:</p>
+  <ul>
+    <li>The AI model, about 400 MB, once, from moments-video.vercel.app (or Hugging Face as a backup). The download starts when you open your first YouTube video after installing (with background reading off, at your first search).</li>
+    <li>YouTube's preview images of the video you are watching, from YouTube's image server (i.ytimg.com). Each request names that video, the same images YouTube's own player loads, and is sent without your cookies. With background reading off in the extension's menu, these images are not downloaded.</li>
+  </ul>
   <h2>Contact</h2>
   <p>Questions: open an issue at <a href="https://github.com/itayco2/Moments/issues">github.com/itayco2/Moments</a>.</p>
 </main>
