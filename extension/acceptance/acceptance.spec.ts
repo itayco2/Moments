@@ -19,12 +19,14 @@ interface QueryRow {
   previewRank: number | null; // null: not in the list, or the video had no preview read
   fullRank: number | null;
   previewHits: number[];
+  previewScores: number[];
   fullHits: number[];
   kindAtRead: string | null;
   engineKind: string; // what the engine holds for the video when the same search is asked of it directly
   engineReadUntil: number; // for a partial read: the second it reached
   engineViewerStopped: boolean; // the engine's record that the viewer stopped the read
   engineHits: number[];
+  engineScores: number[];
   barMatchesEngine: boolean;
 }
 interface VideoRow {
@@ -87,18 +89,18 @@ async function settle(page: Page, timeoutMs: number): Promise<void> {
 }
 
 // The engine's own answer to searches, asked over a port like a tab would (it starts no read).
-function engineSearch(control: Page, videoId: string, queries: string[], idBase: number): Promise<{ starts: number[]; kind: string; readUntil: number; viewerStopped: boolean }[]> {
+function engineSearch(control: Page, videoId: string, queries: string[], idBase: number): Promise<{ starts: number[]; scores: number[]; kind: string; readUntil: number; viewerStopped: boolean }[]> {
   return control.evaluate(
     async ({ videoId: id, queries: qs, idBase: base }) => {
       const port = chrome.runtime.connect({ name: "moments" });
-      const out: { starts: number[]; kind: string; readUntil: number; viewerStopped: boolean }[] = [];
+      const out: { starts: number[]; scores: number[]; kind: string; readUntil: number; viewerStopped: boolean }[] = [];
       for (const [i, query] of qs.entries()) {
         out.push(
           await new Promise((resolve) => {
             port.onMessage.addListener(function on(m) {
               if (m.type === "results" && m.id === base + i) {
                 port.onMessage.removeListener(on);
-                resolve({ starts: m.hits.map((h: { start: number }) => h.start), kind: m.kind, readUntil: m.readUntil, viewerStopped: m.viewerStopped });
+                resolve({ starts: m.hits.map((h: { start: number }) => h.start), scores: m.hits.map((h: { score: number }) => h.score), kind: m.kind, readUntil: m.readUntil, viewerStopped: m.viewerStopped });
               }
             });
             port.postMessage({ type: "search", id: base + i, videoId: id, query });
@@ -193,7 +195,9 @@ test("acceptance", async () => {
 
     // Preview-only answers, straight from the engine (no full read is triggered this way).
     const qs = video.queries.map((q) => q.q);
-    const preview = previewAvailable ? (await engineSearch(control, video.id, qs, 1000)).map((r) => r.starts) : qs.map(() => [] as number[]);
+    const previewAnswers = previewAvailable ? await engineSearch(control, video.id, qs, 1000) : null;
+    const preview = previewAnswers ? previewAnswers.map((r) => r.starts) : qs.map(() => [] as number[]);
+    const previewScores = previewAnswers ? previewAnswers.map((r) => r.scores) : qs.map(() => [] as number[]);
 
     await page.waitForFunction(() => !document.getElementById("movie_player")?.classList.contains("ad-showing"), null, { timeout: 300_000 });
     const t1 = Date.now();
@@ -242,12 +246,14 @@ test("acceptance", async () => {
         previewRank: rankOf(preview[i], q.answer),
         fullRank: rankOf(fullHits, q.answer),
         previewHits: preview[i],
+        previewScores: previewScores[i],
         fullHits,
         kindAtRead,
         engineKind: engine.kind,
         engineReadUntil: engine.readUntil,
         engineViewerStopped: engine.viewerStopped,
         engineHits: engine.starts,
+        engineScores: engine.scores, // for the "no clear match" line (EVAL.md)
         barMatchesEngine: JSON.stringify(fullHits) === JSON.stringify(engine.starts),
       });
     }

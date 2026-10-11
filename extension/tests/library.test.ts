@@ -325,3 +325,12 @@ describe("needsPreviews (PF32: search covers the whole video)", () => {
     expect(needsPreviews(e("full", [0, 1, 2], 2))).toBe(false);
   });
 });
+
+describe("isWeakYouTubeMatch (the extension's own \"no clear match\" line)", () => {
+  it("flags only a top score under the line, and nothing when there are no results", async () => {
+    const { WEAK_MATCH_YOUTUBE, isWeakYouTubeMatch } = await import("../src/engine/library");
+    expect(isWeakYouTubeMatch(undefined)).toBe(false);
+    expect(isWeakYouTubeMatch(WEAK_MATCH_YOUTUBE - 0.001)).toBe(true);
+    expect(isWeakYouTubeMatch(WEAK_MATCH_YOUTUBE)).toBe(false);
+  });
+});

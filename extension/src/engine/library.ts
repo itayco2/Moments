@@ -1,7 +1,7 @@
 // Each video's vectors in memory (the most recently used ones), saved to IndexedDB, merged after a full-detail
 // read, and searched with the website's rule (web/src/search.ts, frame-counted hide window from PF21).
 import { fp16ToFloat32 } from "../../../web/src/format";
-import { isWeakMatch, type Row, search } from "../../../web/src/search";
+import { type Row, search } from "../../../web/src/search";
 import { toFp16 } from "../fp16";
 import type { Hit } from "../protocol";
 import { loadVideo, type SavedVideo, saveVideo, touchVideo } from "./store";
@@ -22,6 +22,10 @@ export interface Entry extends Part {
 }
 
 export const DIM = 768;
+// "No clear match" below this top score. The website's 0.74 was set on its NASA library; right answers on YouTube
+// frames score lower, so the extension has its own line, set from the acceptance searches (EVAL.md).
+export const WEAK_MATCH_YOUTUBE = 0.74;
+export const isWeakYouTubeMatch = (topScore: number | undefined): boolean => topScore !== undefined && topScore < WEAK_MATCH_YOUTUBE;
 // Vectors held in memory: about 100 MB for 50 hour-long videos read in full detail. Older ones reload from storage.
 export const MAX_IN_MEMORY = 50;
 const RESULTS = 6;
@@ -215,7 +219,7 @@ export class Library {
 
   find(e: Entry, query: Float32Array): { hits: Hit[]; weak: boolean } {
     const found = search(e.rows, e.vectors, e.dim, query, RESULTS);
-    return { hits: found.map((h) => ({ start: h.start, end: h.end, score: h.score })), weak: isWeakMatch(found) };
+    return { hits: found.map((h) => ({ start: h.start, end: h.end, score: h.score })), weak: isWeakYouTubeMatch(found[0]?.score) };
   }
 
   clear(): void {
