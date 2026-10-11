@@ -1,5 +1,6 @@
 // Float32 to IEEE 754 half precision, rounding half up. Saved vectors are fp16: the NASA demo ships its vectors
 // the same way and scores the same as fp32.
+// NaN is stored as infinity and exact ties round half up; neither occurs in normalized vectors.
 const f32 = new Float32Array(1);
 const u32 = new Uint32Array(f32.buffer);
 

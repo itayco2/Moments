@@ -39,8 +39,9 @@ const result = <T>(req: IDBRequest<T>) =>
 const finished = (tx: IDBTransaction) =>
   new Promise<void>((resolve, reject) => {
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
+    // A failed request aborts the transaction, and only the abort carries the real error (onerror fires before
+    // tx.error is set, which would reject with null).
+    tx.onabort = () => reject(tx.error ?? new Error("the saved-videos transaction was aborted"));
   });
 
 export async function loadVideo(videoId: string): Promise<SavedVideo | undefined> {
