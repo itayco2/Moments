@@ -12,6 +12,9 @@
     { "matches": ["https://www.youtube.com/*"], "js": ["page-reader.js"], "run_at": "document_idle", "world": "MAIN" },
     { "matches": ["https://www.youtube.com/*"], "js": ["content.js"], "run_at": "document_idle" }
   ],
+  "commands": {
+    "focus-search": { "suggested_key": { "default": "Alt+M" }, "description": "Search the YouTube video you are watching" }
+  },
   "permissions": ["offscreen", "storage", "alarms"],
   "host_permissions": [
     "https://www.youtube.com/*",

@@ -47,3 +47,27 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   );
   return true;
 });
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "focus-search") return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id !== undefined && tab.url?.startsWith("https://www.youtube.com/watch")) {
+    await chrome.tabs.sendMessage(tab.id, { type: "focus" }).catch((err: unknown) => console.warn("Moments: focus not delivered", err));
+  }
+});
+
+// Free the model's memory after 10 minutes without a YouTube video tab (two checks 5 minutes apart).
+const IDLE_ALARM = "idle-check";
+const IDLE_CHECK_MINUTES = 5;
+const IDLE_CHECKS_BEFORE_UNLOAD = 2;
+const startIdleCheck = () => void chrome.alarms.create(IDLE_ALARM, { periodInMinutes: IDLE_CHECK_MINUTES });
+chrome.runtime.onInstalled.addListener(startIdleCheck);
+chrome.runtime.onStartup.addListener(startIdleCheck);
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== IDLE_ALARM) return;
+  const tabs = await chrome.tabs.query({ url: "https://www.youtube.com/watch*" });
+  const { idleChecks = 0 } = await chrome.storage.session.get("idleChecks");
+  const next = tabs.length ? 0 : (idleChecks as number) + 1;
+  await chrome.storage.session.set({ idleChecks: next });
+  if (next >= IDLE_CHECKS_BEFORE_UNLOAD && (await engineExists())) await chrome.offscreen.closeDocument();
+});
