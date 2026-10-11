@@ -30,6 +30,8 @@ export interface Tile {
 
 const BASE = /^https:\/\/i\.ytimg\.com\/sb\/([A-Za-z0-9_-]{11})\/storyboard3_L\$L\/\$N\.jpg\?/;
 const MIN_WIDTH = 160; // smaller previews (48x27, 80x45) carry too little to search
+// A level name and signature go into sheet URLs: letters, digits, _, $ and - only, as in every spec seen.
+const TOKEN = /^[\w$-]+$/;
 
 export function parseSpec(spec: string): Storyboard | null {
   const [base, ...parts] = spec.split("|");
@@ -38,7 +40,7 @@ export function parseSpec(spec: string): Storyboard | null {
   const levels: Level[] = [];
   for (const [index, part] of parts.entries()) {
     const fields = part.split("#");
-    if (fields.length < 8) return null;
+    if (fields.length < 8 || !TOKEN.test(fields[6]) || !TOKEN.test(fields[7])) return null;
     const numbers = fields.slice(0, 6).map(Number);
     if (!numbers.every((n) => Number.isInteger(n) && n >= 0)) return null;
     const [width, height, count, cols, rows, intervalMs] = numbers;
@@ -54,8 +56,9 @@ export function bestLevel(sb: Storyboard): Level | null {
 }
 
 export function sheetUrl(sb: Storyboard, level: Level, sheet: number): string {
-  const name = level.name.replace("$M", String(sheet));
-  return `${sb.base.replace("$L", String(level.index)).replace("$N", name)}&sigh=${level.sigh}`;
+  // Function replacers: a "$$" or "$&" in the text is inserted as it is, never read as a replacement pattern.
+  const name = level.name.replace("$M", () => String(sheet));
+  return `${sb.base.replace("$L", () => String(level.index)).replace("$N", () => name)}&sigh=${level.sigh}`;
 }
 
 export function tiles(sb: Storyboard, level: Level, duration: number): Tile[] {

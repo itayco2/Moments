@@ -68,3 +68,25 @@ describe("sheetUrl", () => {
     );
   });
 });
+
+describe("spec validation (M5: names and signatures go into URLs)", () => {
+  const level = (name: string, sigh: string) => short.spec.replace("#M$M#rs$AOn4CLCHZGerbRu0IiBb-AIyubx5_-E4oQ", () => `#${name}#${sigh}`);
+
+  it("accepts every name and signature in the captured specs", () => {
+    for (const spec of [short.spec, long.spec, lowres.spec]) expect(parseSpec(spec)).not.toBeNull();
+  });
+
+  it("refuses names and signatures with anything but letters, digits, _, $ and -", () => {
+    expect(parseSpec(level("M$M", "rs$abc&evil=1"))).toBeNull();
+    expect(parseSpec(level("../M$M", "rs$abc"))).toBeNull();
+    expect(parseSpec(level("M$M", "rs$abc/x"))).toBeNull();
+    expect(parseSpec(level("M$&", "rs$abc"))).toBeNull();
+    expect(parseSpec(level("M$M", ""))).toBeNull();
+    expect(parseSpec(level("M$M", "rs$abc"))).not.toBeNull();
+  });
+
+  it("puts a $$ in a name into the URL as it is, not as a replacement pattern", () => {
+    const sb = parseSpec(level("M$$", "rs$abc"))!;
+    expect(sheetUrl(sb, sb.levels[3], 0)).toContain("/storyboard3_L3/M$$.jpg?");
+  });
+});
