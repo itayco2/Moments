@@ -78,7 +78,7 @@ Chrome Web Store rules that shape the build:
   files and points the runtime at them. Only model weights (data) are downloaded.
 - The page CSP allows WebAssembly (`wasm-unsafe-eval`) and nothing else beyond the default.
 - Permissions: youtube.com, i.ytimg.com, moments-video.vercel.app, huggingface.co and its CDN hosts, `offscreen`,
-  `storage`. No access to other sites.
+  `storage`, `alarms` (the 10-minute unload check; a service worker cannot keep a timer). No access to other sites.
 
 ## Targets, written before measuring
 
