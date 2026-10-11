@@ -56,7 +56,7 @@ jobs:
         run: npx playwright test demo
 
   extension:
-    name: extension (types, unit tests)
+    name: extension (types, unit tests, build with the no-remote-code check)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -69,4 +69,7 @@ jobs:
       - run: npm ci
         working-directory: extension
       - run: npx tsc --noEmit && npx vitest run --passWithNoTests
+        working-directory: extension
+      - name: Build (fails if any script in dist names a script CDN)
+        run: node build.mjs
         working-directory: extension
