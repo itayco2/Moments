@@ -2,6 +2,7 @@
 import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
+import { assertNoRemoteCode, rewriteRuntimeCdn } from "./scripts/remote-code.mjs";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const out = fileURLToPath(new URL("./dist/", import.meta.url));
@@ -35,6 +36,8 @@ await build({
 // Vite emits a second copy of the ONNX runtime from transformers.js's `new URL(...wasm)`; the worker loads /ort/ instead.
 const assets = new URL("./dist/assets/", import.meta.url);
 for (const f of (await readdir(assets)).filter((n) => n.endsWith(".wasm"))) await rm(new URL(f, assets));
+// No remote code (Chrome Web Store): transformers.js's jsDelivr default for the runtime becomes the bundled path.
+if (rewriteRuntimeCdn(out, process.env.VITE_ORT_BASE) === 0) console.warn("build: no ONNX runtime CDN default found to rewrite");
 
 // 2 and 3. Content scripts must be classic scripts: one self-contained IIFE each.
 for (const [name, entry] of [["content", "src/content/main.ts"], ["page-reader", "src/page-reader.ts"]]) {
@@ -54,4 +57,5 @@ await cp(new URL("./manifest.json", import.meta.url), new URL("./dist/manifest.j
 await cp(new URL("./icons/", import.meta.url), new URL("./dist/icons/", import.meta.url), { recursive: true });
 await mkdir(new URL("./dist/ort/", import.meta.url), { recursive: true });
 for (const f of ORT_FILES) await cp(`${ortDir}${f}`, fileURLToPath(new URL(`./dist/ort/${f}`, import.meta.url)));
+assertNoRemoteCode(out);
 console.log("built extension/dist");

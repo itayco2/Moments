@@ -15,6 +15,7 @@ import {
   VISION_DTYPE,
 } from "./config";
 import { modelFetch } from "./fetch-length";
+import { useBundledRuntime } from "./ort-path";
 import type { Request, Response } from "./protocol";
 
 // MODEL_BASE can be relative (the website's own path); everything below needs the full address.
@@ -26,7 +27,7 @@ if (MODEL_URL) {
   env.allowLocalModels = true;
   env.localModelPath = MODEL_URL;
 }
-if (ORT_BASE && env.backends.onnx.wasm) env.backends.onnx.wasm.wasmPaths = new URL(ORT_BASE, self.location.href).href;
+useBundledRuntime(env.backends.onnx.wasm, ORT_BASE, self.location.href);
 const PINNED = { revision: MODEL_REVISION };
 // With a model copy of our own, Hugging Face URLs of the files we host are answered from it first.
 const MIRROR = MODEL_URL ? { from: `https://huggingface.co/${MODEL_ID}/resolve/`, to: `${MODEL_URL}${MODEL_ID}/` } : undefined;
